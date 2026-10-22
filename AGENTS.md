@@ -1,0 +1,50 @@
+# AGENTS.md
+
+Guide for AI coding agents (Claude Code, Codex, Cursor, Gemini, …) working on this repository,
+and for agents *using* the tool through its CLI.
+
+## Using the tool (no MCP)
+
+Run `forscore-mcp conventions` and follow it. Read with `forscore-mcp list --json` and
+`forscore-mcp values <kind> --json`; write a changeset file, run `forscore-mcp preview <file>`,
+get the user's approval, ask them to quit forScore on the Mac, then
+`forscore-mcp apply <file> --yes`. Never pass `--yes` without explicit user approval.
+
+## Architecture
+
+`src/forscore_mcp/`, layered bottom-up; each layer only imports the ones above it:
+
+| Module | Role |
+|---|---|
+| `errors.py`, `models.py` | exceptions (user-facing messages) and plain dataclasses |
+| `keys.py`, `sorttitle.py` | pure helpers: key codec, sort-title normalisation |
+| `paths.py` | default locations, overridable by env vars |
+| `schema.py` | discovers and validates the Core Data layout; raises `SchemaError` |
+| `db.py` | connections (read-only by default), in-memory snapshots, transactions |
+| `safety.py` | forScore-running guard, backup / restore |
+| `repository.py` | `Store`: read and write primitives on one connection, no policy |
+| `changeset.py` | parse/validate changesets, run them on a `Store`, produce a diff `Report` |
+| `library.py` | `Library`: the public API; all safety policy lives here |
+| `doctor.py` | environment checks |
+| `cli.py`, `server.py` | thin front-ends over `Library`; no business logic |
+| `conventions.md` | metadata conventions, shipped in the package; single source of truth |
+
+Front-ends must stay thin: a new capability goes into `Library` (and below) first, then gets
+exposed by both the CLI and the MCP server.
+
+## Rules
+
+- `uv` only. Before committing: `uv run ruff format . && uv run ruff check . && uv run ty check
+  && uv run pytest`. CI enforces all four.
+- Tests use the synthetic library in `tests/conftest.py`, built from the real schema DDL in
+  `tests/fixtures/schema.sql`. Never commit a real library, backups or personal changesets
+  (`local/` is gitignored for those).
+- Every write path goes through `Library`, which must keep: refusing to write while forScore runs
+  (`safety.require_quit`), a backup before writing, one transaction, integrity checks, and
+  `Store.touch` on changed items (needed for sync).
+- Schema knowledge belongs in `schema.py` and `docs/schema.md`. If you discover something new about
+  forScore's store, document it there.
+- Conventional Commits (`feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `test:`, `refactor:`); work
+  on a branch and merge to `main` through a pull request with green CI.
+- The version lives in `pyproject.toml`, the two plugin manifests and `plugin/.mcp.json`;
+  `tests/test_versions.py` keeps them in sync. See `docs/releasing.md`.
