@@ -6,7 +6,9 @@ forScore (tested with 15.2 on macOS) stores its library in a Core Data SQLite da
 ~/Library/Containers/com.mgsdevelopment.forscore/Data/Library/Preferences/library.4sl
 ```
 
-Nothing here is a documented API. `schema.py` checks the parts listed below every time it opens
+Prior art: [forscore-cli](https://github.com/danielhopkins/forscore-cli) (Rust, MIT) edits the
+same store and also writes the sync files. Its key decoding treats the middle digit as a sharp
+flag, which does not match the data. Nothing here is a documented API. `schema.py` checks the parts listed below every time it opens
 the store, and refuses to work with a store that does not match.
 
 ## Entities
@@ -51,15 +53,35 @@ not handled yet.
 1 = natural, 2 = ♯, and mode 0 = major, 1 = minor. 611 = A minor, 300 = E♭ major,
 421 = F♯ minor. Confirmed against values set in the app.
 
-(forScore's PDF-metadata import uses a different, MIDI-style encoding, `keysf`/`keymi`. It is
-not used in the database.)
+forScore's CSV export and PDF-metadata import use a MIDI-style pair instead: `keysf`, the
+number of sharps (negative for flats), and `keymi`, 0 for major and 1 for minor. A CSV export
+from the app agrees with the code above for every score, for example 511 = −2/1 = G minor.
 
 ## Sync
 
-forScore syncs through CloudKit. Edits made directly in the database propagate to other devices
-as long as forScore is **not running** during the write and every changed item gets
-`Z_OPT + 1` and a fresh `ZMODIFIED`. This was confirmed by checking the changes on an iPad after
-editing on the Mac. If forScore is open, it may overwrite the changes from memory.
+forScore does **not** sync the database. It syncs one sync file per score,
+`Preferences/Sync/<pdf name>.itm`, through iCloud. Each file is a gzipped binary plist holding
+that score's metadata, pages and other data. The app rewrites a score's file whenever the
+score is edited in the app.
+
+The metadata keys this tool writes are `title`, `composer`, `genre`, `keywords` (tags),
+`labels`, `reference` and `key` (the same code as `ZKEY`). Lists are joined with ", ", and an
+empty value removes the key. `Sync/*.lib` files hold the libraries.
+
+Editing only the database leaves the sync files stale, so other devices never see the change.
+This happened on 2026-10-22: after a direct database edit, the iPad kept the old names for 40
+scores. Bumping `Z_OPT` and `ZMODIFIED` is *not* enough.
+
+`apply` therefore updates each changed score's sync file in the same step, and bumps
+`Z_OPT`/`ZMODIFIED` so the database stays consistent. `forscore-mcp sync-check` (and the
+`doctor` check) compares the two.
+
+If they ever drift, force a full resync:
+1. Turn sync off on the other devices.
+2. On the Mac, turn sync off and on again, choosing to keep this device's data.
+3. Turn sync back on on the other devices.
+
+forScore must not be running during writes; otherwise it may overwrite the changes from memory.
 
 ## Official interfaces (for reference)
 
@@ -68,5 +90,8 @@ editing on the Mac. If forScore is open, it may overwrite the changes from memor
   `AddMetadataIntent`, `RemoveMetadataIntent`, `RenameScoreIntent`, …). This is a possible
   future backend that would not touch the database, but it needs user-built Shortcuts and is
   slow for bulk edits.
-- Backups panel: CSV metadata import/export. The format is undocumented.
+- Backups panel: CSV metadata import/export. The columns are `Filename, Title, Start Page
+  (Bookmark), End Page (Bookmark), Composers, Genres, Tags, Labels, Reference, Rating,
+  Difficulty, Minutes, Seconds, keysf, keymi`, with lists comma-separated. It is a possible
+  officially supported write path.
 - PDF metadata on import (Title, Author → composers, Subject → genres, Keywords → tags).

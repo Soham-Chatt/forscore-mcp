@@ -27,5 +27,7 @@ is already consistent.
 4. `preview_changeset` and show the user the summary.
 5. Ask the user to **quit forScore on the Mac** (the iPad can stay open), then
    `apply_changeset` with `confirm=true`. A backup is made automatically.
-6. Ask the user to open forScore on the Mac, wait a minute for sync, and check the iPad.
-   If anything is wrong, `restore_backup` with the backup id from the apply report.
+6. Check that `sync_files_updated` in the report matches the number of scores changed. Ask the
+   user to open forScore on the Mac, wait a minute, and check the iPad. `check_sync` should
+   return nothing. If anything is wrong, `restore_backup` with the backup id from the apply
+   report.

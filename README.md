@@ -92,6 +92,7 @@ forscore-mcp show "Für Elise"             # one score's metadata
 forscore-mcp values composers             # all composers, with usage counts
 forscore-mcp preview changes.json         # dry run (safe while forScore is open)
 forscore-mcp apply changes.json --yes     # back up, then apply (quit forScore first)
+forscore-mcp sync-check                   # does the iPad get the same metadata?
 forscore-mcp backups                      # list backups
 forscore-mcp restore <id> --yes           # undo
 forscore-mcp key "E♭ major"               # key name ↔ forScore's code
@@ -119,7 +120,7 @@ uses any more are removed unless you pass `"prune": false`.
 
 | Tool | Writes? |
 |---|---|
-| `list_scores`, `get_score`, `list_values`, `convert_key`, `doctor`, `get_conventions` | no |
+| `list_scores`, `get_score`, `list_values`, `check_sync`, `convert_key`, `doctor`, `get_conventions` | no |
 | `preview_changeset`, `list_backups`, `create_backup` | no (backups only) |
 | `apply_changeset(changeset, confirm)`, `restore_backup(backup_id, confirm)` | yes, only with `confirm=true` |
 
@@ -130,8 +131,9 @@ Configuration via environment: `FORSCORE_LIBRARY` (library path) and `FORSCORE_B
 
 forScore keeps its library in a Core Data SQLite store. This tool validates the store's layout
 on every open (and refuses to write to anything it does not recognise), edits the relevant rows,
-and bumps each changed item's Core Data version and modification date so forScore's sync
-picks the change up. Details: [`docs/schema.md`](docs/schema.md).
+bumps each changed item's Core Data version and modification date, and updates the score's
+sync file. forScore syncs those files, not the database, to your other devices.
+`forscore-mcp sync-check` confirms that both agree. Details: [`docs/schema.md`](docs/schema.md).
 
 ## Development
 
