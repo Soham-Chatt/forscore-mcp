@@ -82,6 +82,13 @@ def apply_changeset(changeset: dict[str, Any], confirm: bool = False) -> dict[st
 
 
 @_tool(READ)
+def check_sync() -> list[dict[str, Any]]:
+    """List metadata that differs between the library and the sync files other devices
+    (iPad, iPhone) receive. Empty means everything is in sync."""
+    return [d.to_dict() for d in Library().sync_drift()]
+
+
+@_tool(READ)
 def list_backups() -> list[dict[str, str]]:
     """List library backups, newest first."""
     return [b.to_dict() for b in Library().backups()]
