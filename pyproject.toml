@@ -1,0 +1,47 @@
+[project]
+name = "forscore-mcp"
+version = "0.1.0"
+description = "Read and clean up forScore library metadata from the CLI, an MCP server, or an LLM skill"
+readme = "README.md"
+authors = [
+    { name = "Soham", email = "113625563+Soham-Chatt@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+keywords = ["forscore", "mcp", "sheet-music", "claude", "llm"]
+classifiers = [
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Private :: Do Not Upload",
+]
+dependencies = [
+    "mcp>=2.3,<3",
+]
+
+[project.scripts]
+forscore-mcp = "forscore_mcp.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.2",
+    "ty>=0.0.91",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["forscore_mcp"]

@@ -1,0 +1,17 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local, personal data — never commit (real library, backups, personal changesets)
+local/
+*.4sl*
+*.4sb
+.coverage
+coverage.xml
