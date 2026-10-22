@@ -8,7 +8,7 @@ from contextlib import closing, contextmanager
 from pathlib import Path
 
 from . import changeset as cs
-from . import paths, safety
+from . import paths, safety, syncfiles
 from .db import connect, require_integrity, snapshot, transaction
 from .models import MetaKind, MetaValue, Score
 from .repository import Store
@@ -18,6 +18,7 @@ class Library:
     def __init__(self, path: Path | None = None, backup_dir: Path | None = None) -> None:
         self.path = path or paths.library_path()
         self.backup_dir = backup_dir or paths.backup_dir()
+        self.sync_dir = syncfiles.sync_dir(self.path)
 
     @contextmanager
     def _store(self, *, write: bool = False) -> Generator[Store]:
@@ -42,6 +43,10 @@ class Library:
         with self._store() as store:
             return store.values(kind)
 
+    def sync_drift(self) -> list[syncfiles.Drift]:
+        """Differences between the library and the sync files other devices receive."""
+        return syncfiles.drift(self.sync_dir, self.scores())
+
     # ---- writes ------------------------------------------------------------------------
 
     def preview(self, data: object) -> cs.Report:
@@ -51,20 +56,31 @@ class Library:
             return cs.run(Store(copy), changeset, dry_run=True)
 
     def apply(self, data: object) -> cs.Report:
-        """Back up, then apply a changeset to the live library in one transaction."""
+        """Back up, then apply a changeset to the database and the sync files.
+
+        The database changes run in one transaction; if writing any sync file fails, the
+        transaction rolls back and the sync files are restored from the backup.
+        """
         changeset = cs.parse(data)
         self.preview(data)  # fail on a copy (bad match, bad key...) before backing up/writing
         with self._writable() as conn:
-            backup = safety.create_backup(conn, self.backup_dir)
-            with transaction(conn):
-                report = cs.run(Store(conn), changeset, dry_run=False)
-                require_integrity(conn)
+            backup = safety.create_backup(conn, self.backup_dir, self.sync_dir)
+            try:
+                with transaction(conn):
+                    report = cs.run(Store(conn), changeset, dry_run=False)
+                    require_integrity(conn)
+                    report.sync_files_updated = sum(
+                        syncfiles.update(self.sync_dir, score) for score in report.updated
+                    )
+            except BaseException:
+                safety.restore_sync_files(backup, self.sync_dir)
+                raise
         report.backup = backup.id
         return report
 
     def backup(self) -> safety.Backup:
         with closing(connect(self.path)) as conn:
-            return safety.create_backup(conn, self.backup_dir)
+            return safety.create_backup(conn, self.backup_dir, self.sync_dir)
 
     def backups(self) -> list[safety.Backup]:
         return safety.list_backups(self.backup_dir)
@@ -73,8 +89,8 @@ class Library:
         """Replace the library with a backup, after backing up the current state."""
         source = safety.find_backup(self.backup_dir, backup_id)
         with self._writable() as conn:
-            current = safety.create_backup(conn, self.backup_dir)
-            safety.restore_backup(source, conn)
+            current = safety.create_backup(conn, self.backup_dir, self.sync_dir)
+            safety.restore_backup(source, conn, self.sync_dir)
             require_integrity(conn)
         return current
 

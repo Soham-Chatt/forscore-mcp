@@ -54,6 +54,8 @@ class Report:
     renamed: dict[str, dict[str, str]] = field(default_factory=dict)
     pruned: dict[str, list[str]] = field(default_factory=dict)
     backup: str | None = None
+    sync_files_updated: int = 0
+    updated: list[Score] = field(default_factory=list, repr=False)  # after-state, not serialised
 
     @property
     def empty(self) -> bool:
@@ -67,6 +69,7 @@ class Report:
             "renamed": self.renamed,
             "pruned": self.pruned,
             "backup": self.backup,
+            "sync_files_updated": self.sync_files_updated,
         }
 
 
@@ -121,7 +124,9 @@ def run(store: Store, changeset: Changeset, *, dry_run: bool) -> Report:
         diff = _diff(before[pk], after[pk])
         if diff:
             report.changes[after[pk].title] = diff
-    store.touch(pk for pk in touched if after[pk] != before[pk])
+    changed = [pk for pk in sorted(touched) if after[pk] != before[pk]]
+    store.touch(changed)
+    report.updated = [after[pk] for pk in changed]
     return report
 
 

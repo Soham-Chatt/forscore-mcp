@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from forscore_mcp import safety
+from forscore_mcp import safety, syncfiles
 from forscore_mcp.library import Library
 
 SCHEMA = Path(__file__).parent / "fixtures" / "schema.sql"
@@ -58,6 +58,10 @@ def build_library(path: Path) -> Path:
         conn.execute(f"INSERT INTO {table} VALUES (?, ?)", (item, meta))
     conn.commit()
     conn.close()
+    sync = syncfiles.sync_dir(path)
+    sync.mkdir()
+    for _, _, title, *_ in SCORES[:2]:  # the third score has no sync file yet
+        syncfiles.write(sync / f"{title}.pdf.itm", {"title": title, "pages": [1, 2], "bpm": 90})
     return path
 
 
