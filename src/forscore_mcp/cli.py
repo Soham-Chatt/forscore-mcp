@@ -57,6 +57,7 @@ def _parser() -> argparse.ArgumentParser:
     apply = command("apply", _apply, "apply a changeset file (backup first)")
     apply.add_argument("file")
     apply.add_argument("--yes", action="store_true", help="actually write (default: preview)")
+    command("sync-check", _sync_check, "compare the library with what syncs to other devices")
     command("backup", _backup, "back up the library now")
     command("backups", _backups, "list backups")
     restore = command("restore", _restore, "restore a backup")
@@ -106,6 +107,15 @@ def _apply(args: argparse.Namespace) -> tuple[Any, str]:
     if not args.yes:
         text += "\n\nPreview only. Quit forScore on the Mac, then re-run with --yes to apply."
     return data, text
+
+
+def _sync_check(_: argparse.Namespace) -> tuple[Any, str]:
+    drift = Library().sync_drift()
+    lines = [
+        f"{d.score}: {d.field} syncs as {_fmt(d.sync_file)}, library has {_fmt(d.library)}"
+        for d in drift
+    ]
+    return [d.to_dict() for d in drift], "\n".join(lines) or "In sync."
 
 
 def _backup(_: argparse.Namespace) -> tuple[Any, str]:
@@ -164,6 +174,7 @@ def _report(report: dict[str, Any]) -> tuple[Any, str]:
         lines.append(f"remove unused {kind}: {', '.join(values)}")
     lines.append(f"\n{report['scores_changed']} scores changed")
     if report["backup"]:
+        lines.append(f"{report['sync_files_updated']} sync files updated")
         lines.append(f"Backup: {report['backup']}")
     return report, "\n".join(lines)
 

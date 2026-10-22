@@ -21,7 +21,8 @@ get the user's approval, ask them to quit forScore on the Mac, then
 | `paths.py` | default locations, overridable by env vars |
 | `schema.py` | discovers and validates the Core Data layout; raises `SchemaError` |
 | `db.py` | connections (read-only by default), in-memory snapshots, transactions |
-| `safety.py` | forScore-running guard, backup / restore |
+| `safety.py` | forScore-running guard, backup / restore (database + sync files) |
+| `syncfiles.py` | per-score `.itm` sync files: read, update, drift check |
 | `repository.py` | `Store`: read and write primitives on one connection, no policy |
 | `changeset.py` | parse/validate changesets, run them on a `Store`, produce a diff `Report` |
 | `library.py` | `Library`: the public API; all safety policy lives here |
@@ -40,8 +41,9 @@ exposed by both the CLI and the MCP server.
   `tests/fixtures/schema.sql`. Never commit a real library, backups or personal changesets
   (`local/` is gitignored for those).
 - Every write path goes through `Library`, which must keep: refusing to write while forScore runs
-  (`safety.require_quit`), a backup before writing, one transaction, integrity checks, and
-  `Store.touch` on changed items (needed for sync).
+  (`safety.require_quit`), a backup before writing, one transaction, integrity checks,
+  `Store.touch` on changed items, and updating their sync files (`syncfiles.update`). Other
+  devices only see what is in the sync files.
 - Schema knowledge belongs in `schema.py` and `docs/schema.md`. If you discover something new about
   forScore's store, document it there.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `test:`, `refactor:`); work

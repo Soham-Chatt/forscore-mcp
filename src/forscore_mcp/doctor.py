@@ -35,6 +35,21 @@ def run_checks(library: Library | None = None) -> list[Check]:
         checks.append(Check("library", True, f"{count} scores in {library.path}"))
     except ForScoreError as exc:
         checks.append(Check("library", False, str(exc)))
+    try:
+        drift = library.sync_drift()
+        scores_off = sorted({d.score for d in drift})
+        checks.append(
+            Check(
+                "sync files",
+                not drift,
+                "OK, other devices see the same metadata."
+                if not drift
+                else f"{len(scores_off)} scores differ from what syncs to other devices "
+                f"(e.g. {', '.join(scores_off[:3])}). See docs/schema.md#sync to resync.",
+            )
+        )
+    except (ForScoreError, OSError) as exc:
+        checks.append(Check("sync files", False, f"Cannot read sync files: {exc}"))
     running = forscore_running()
     checks.append(
         Check(
