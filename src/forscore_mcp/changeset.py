@@ -130,6 +130,8 @@ def run(store: Store, changeset: Changeset, *, dry_run: bool) -> Report:
         for kind, values in change.remove.items():
             store.remove_values(pk, kind, values)
         touched.add(pk)
+        if MetaKind.LIBRARIES in (*change.add, *change.remove) or "libraries" in change.set:
+            touched.update(store.bookmark_pks(pk))
 
     if changeset.prune:
         for kind in MetaKind:

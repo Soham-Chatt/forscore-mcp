@@ -226,27 +226,41 @@ class Store:
 
     def set_values(self, pk: int, kind: MetaKind, values: list[str]) -> None:
         k = self.schema.kinds[kind]
-        self.conn.execute(f"DELETE FROM {k.join_table} WHERE {k.join_item} = ?", (pk,))
+        for target in self._targets(pk, kind):
+            self.conn.execute(f"DELETE FROM {k.join_table} WHERE {k.join_item} = ?", (target,))
         self.add_values(pk, kind, values)
 
     def add_values(self, pk: int, kind: MetaKind, values: list[str]) -> None:
         k = self.schema.kinds[kind]
         for value in values:
-            self.conn.execute(
-                f"INSERT OR IGNORE INTO {k.join_table} ({k.join_item}, {k.join_meta}) "
-                "VALUES (?, ?)",
-                (pk, self._ensure_meta(kind, value)),
-            )
+            meta_pk = self._ensure_meta(kind, value)
+            for target in self._targets(pk, kind):
+                self.conn.execute(
+                    f"INSERT OR IGNORE INTO {k.join_table} ({k.join_item}, {k.join_meta}) "
+                    "VALUES (?, ?)",
+                    (target, meta_pk),
+                )
 
     def remove_values(self, pk: int, kind: MetaKind, values: list[str]) -> None:
         k = self.schema.kinds[kind]
         for value in values:
             meta_pk = self._meta_pk(kind, value)
-            if meta_pk is not None:
+            for target in self._targets(pk, kind) if meta_pk is not None else ():
                 self.conn.execute(
                     f"DELETE FROM {k.join_table} WHERE {k.join_item} = ? AND {k.join_meta} = ?",
-                    (pk, meta_pk),
+                    (target, meta_pk),
                 )
+
+    def bookmark_pks(self, score_pk: int) -> list[int]:
+        rows = self.conn.execute(
+            f"SELECT Z_PK FROM {ITEM_TABLE} WHERE ZSCORE = ? AND Z_ENT = ?",
+            (score_pk, self.schema.bookmark_entity),
+        )
+        return [pk for (pk,) in rows]
+
+    def _targets(self, pk: int, kind: MetaKind) -> list[int]:
+        """forScore keeps a score's bookmarks in the same libraries as the score."""
+        return [pk, *self.bookmark_pks(pk)] if kind is MetaKind.LIBRARIES else [pk]
 
     def rename(self, kind: MetaKind, old: str, new: str) -> set[int] | None:
         """Rename a value everywhere; merges into ``new`` if it already exists.

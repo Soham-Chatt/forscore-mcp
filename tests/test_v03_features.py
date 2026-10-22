@@ -155,6 +155,8 @@ def test_libraries(library: Library) -> None:
     assert library.item("Kinderszenen").libraries == ["Personal"]
     assert sync_file(library, "Kinderszenen.pdf")["libraries"] == "Personal"
     assert "libraries" not in report.pruned  # libraries are never pruned
+    assert library.item("Kinderszenen › Träumerei").libraries == ["Personal"]  # follows score
+    assert "Kinderszenen › Träumerei" in report.changes
     assert {v.value for v in library.values(MetaKind.LIBRARIES)} == {"Lesson Materials", "Personal"}
 
 
