@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 
 from .errors import ForScoreError
 from .library import Library
+from .models import ItemKind
 from .safety import forscore_running
 
 
@@ -31,20 +32,27 @@ def run_checks(library: Library | None = None) -> list[Check]:
         )
     ]
     try:
-        count = len(library.scores())
-        checks.append(Check("library", True, f"{count} scores in {library.path}"))
+        items = library.items()
+        bookmarks = sum(i.kind is ItemKind.BOOKMARK for i in items)
+        checks.append(
+            Check(
+                "library",
+                True,
+                f"{len(items) - bookmarks} scores, {bookmarks} bookmarks in {library.path}",
+            )
+        )
     except ForScoreError as exc:
         checks.append(Check("library", False, str(exc)))
     try:
         drift = library.sync_drift()
-        scores_off = sorted({d.score for d in drift})
+        scores_off = sorted({d.item for d in drift})
         checks.append(
             Check(
                 "sync files",
                 not drift,
                 "OK, other devices see the same metadata."
                 if not drift
-                else f"{len(scores_off)} scores differ from what syncs to other devices "
+                else f"{len(scores_off)} items differ from what syncs to other devices "
                 f"(e.g. {', '.join(scores_off[:3])}). See docs/schema.md#sync to resync.",
             )
         )

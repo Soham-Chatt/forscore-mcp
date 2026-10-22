@@ -12,8 +12,8 @@ from typing import Any
 from . import __version__, conventions, keys
 from .doctor import run_checks
 from .errors import ForScoreError
-from .library import Library
-from .models import MetaKind, Score
+from .library import Filters, Library
+from .models import FIELDS, Item, ItemKind, MetaKind
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -48,8 +48,17 @@ def _parser() -> argparse.ArgumentParser:
 
     sub.add_parser("serve", help="run the MCP server over stdio (default)")
     command("doctor", _doctor, "check library access and whether changes can be applied")
-    command("list", _list, "list scores").add_argument("query", nargs="?")
-    command("show", _show, "show one score by UUID or title").add_argument("match")
+    ls = command("list", _list, "list scores and bookmarks")
+    ls.add_argument("query", nargs="?", help="search titles, references, composers, tags")
+    ls.add_argument("--kind", type=ItemKind, choices=list(ItemKind))
+    for name in ("composer", "genre", "tag", "label", "library"):
+        ls.add_argument(f"--{name}", help=f"exact {name} (case-insensitive)")
+    ls.add_argument("--missing", choices=FIELDS, help="only items where this field is empty")
+    ls.add_argument("--limit", type=int, default=None)
+    ls.add_argument("--offset", type=int, default=0)
+    command("show", _show, "show one item by UUID, title or 'Score > Bookmark'").add_argument(
+        "match"
+    )
     command("values", _values, "list values of a category").add_argument(
         "kind", type=MetaKind, choices=list(MetaKind)
     )
@@ -57,6 +66,8 @@ def _parser() -> argparse.ArgumentParser:
     apply = command("apply", _apply, "apply a changeset file (backup first)")
     apply.add_argument("file")
     apply.add_argument("--yes", action="store_true", help="actually write (default: preview)")
+    command("setlists", _setlists, "list setlists and their items")
+    command("audit", _audit, "find duplicates, file-name mismatches and sort-name issues")
     command("sync-check", _sync_check, "compare the library with what syncs to other devices")
     command("backup", _backup, "back up the library now")
     command("backups", _backups, "list backups")
@@ -78,14 +89,20 @@ def _doctor(_: argparse.Namespace) -> tuple[Any, str]:
 
 
 def _list(args: argparse.Namespace) -> tuple[Any, str]:
-    scores = Library().scores(args.query)
-    lines = [_summary(s) for s in scores] + [f"\n{len(scores)} scores"]
-    return [s.to_dict() for s in scores], "\n".join(lines)
+    filters = Filters(
+        args.query, args.kind, args.composer, args.genre, args.tag, args.label, args.library,
+        args.missing,
+    )  # fmt: skip
+    page = Library().page(filters, offset=args.offset, limit=args.limit or 10**9)
+    lines = [_summary(i) for i in page.items]
+    shown = f"{len(page.items)} of {page.total}" if len(page.items) < page.total else page.total
+    lines.append(f"\n{shown} items")
+    data = {"total": page.total, "offset": page.offset, "items": [i.to_dict() for i in page.items]}
+    return data, "\n".join(lines)
 
 
 def _show(args: argparse.Namespace) -> tuple[Any, str]:
-    score = Library().score(args.match)
-    data = score.to_dict()
+    data = Library().item(args.match).to_dict()
     width = max(map(len, data))
     text = "\n".join(f"{k.ljust(width)}  {_fmt(v)}" for k, v in data.items())
     return data, text
@@ -93,7 +110,32 @@ def _show(args: argparse.Namespace) -> tuple[Any, str]:
 
 def _values(args: argparse.Namespace) -> tuple[Any, str]:
     values = Library().values(args.kind)
-    return [v.to_dict() for v in values], "\n".join(f"{v.count:4}  {v.value}" for v in values)
+    lines = [
+        f"{v.count:4}  {v.value}" + (f"  (sorted as {v.sort_name})" if v.sort_name else "")
+        for v in values
+    ]
+    return [v.to_dict() for v in values], "\n".join(lines)
+
+
+def _setlists(_: argparse.Namespace) -> tuple[Any, str]:
+    setlists = Library().setlists()
+    lines = [f"{s.title}\n" + "".join(f"  {n}. {i}\n" for n, i in enumerate(s.items, 1))
+             for s in setlists]  # fmt: skip
+    return [s.to_dict() for s in setlists], "\n".join(lines).rstrip() or "No setlists."
+
+
+def _audit(_: argparse.Namespace) -> tuple[Any, str]:
+    report = Library().audit()
+    lines = []
+    for group in report.duplicate_titles:
+        lines.append(f"similar titles: {' | '.join(group)}")
+    for group in report.identical_files:
+        lines.append(f"identical PDFs: {' | '.join(group)}")
+    for entry in report.filename_mismatches:
+        lines.append(f"file name differs: {entry['item']}  ({entry['file']})")
+    for entry in report.sort_names:
+        lines.append(f"sort name: {entry['composer']} → {entry['sort_name']}: {entry['reason']}")
+    return report.to_dict(), "\n".join(lines) or "Nothing to report."
 
 
 def _preview(args: argparse.Namespace) -> tuple[Any, str]:
@@ -112,7 +154,7 @@ def _apply(args: argparse.Namespace) -> tuple[Any, str]:
 def _sync_check(_: argparse.Namespace) -> tuple[Any, str]:
     drift = Library().sync_drift()
     lines = [
-        f"{d.score}: {d.field} syncs as {_fmt(d.sync_file)}, library has {_fmt(d.library)}"
+        f"{d.item}: {d.field} syncs as {_fmt(d.sync_file)}, library has {_fmt(d.library)}"
         for d in drift
     ]
     return [d.to_dict() for d in drift], "\n".join(lines) or "In sync."
@@ -162,7 +204,7 @@ def _read_json(file: str) -> Any:
 
 
 def _report(report: dict[str, Any]) -> tuple[Any, str]:
-    if not (report["changes"] or report["renamed"] or report["pruned"]):
+    if not (report["changes"] or report["renamed"] or report["sort_names"] or report["pruned"]):
         return report, "No changes."
     lines = []
     for kind, mapping in report["renamed"].items():
@@ -170,20 +212,23 @@ def _report(report: dict[str, Any]) -> tuple[Any, str]:
     for title, fields in report["changes"].items():
         lines.append(title)
         lines += [f"    {f}: {_fmt(b)} → {_fmt(a)}" for f, (b, a) in fields.items()]
+    for composer, sort_name in report["sort_names"].items():
+        lines.append(f"sort name {composer}: {sort_name}")
     for kind, values in report["pruned"].items():
         lines.append(f"remove unused {kind}: {', '.join(values)}")
-    lines.append(f"\n{report['scores_changed']} scores changed")
+    lines.append(f"\n{report['items_changed']} items changed")
     if report["backup"]:
         lines.append(f"{report['sync_files_updated']} sync files updated")
         lines.append(f"Backup: {report['backup']}")
     return report, "\n".join(lines)
 
 
-def _summary(score: Score) -> str:
+def _summary(item: Item) -> str:
     extra = " · ".join(
-        filter(None, [", ".join(score.composers), score.reference, ", ".join(score.genres)])
+        filter(None, [", ".join(item.composers), item.reference, ", ".join(item.genres)])
     )
-    return f"{score.title}  ({extra})" if extra else score.title
+    name = f"  └ {item.title} (p. {item.pages})" if item.parent else item.title
+    return f"{name}  ({extra})" if extra else name
 
 
 def _fmt(value: Any) -> str:

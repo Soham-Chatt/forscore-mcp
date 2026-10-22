@@ -13,14 +13,15 @@ from mcp.types import ToolAnnotations
 from . import __version__, conventions, keys
 from .doctor import run_checks
 from .errors import ForScoreError
-from .library import Library
-from .models import MetaKind
+from .library import Filters, Library
+from .models import ItemKind, MetaKind
 
 INSTRUCTIONS = """\
-Tools to read and fix metadata (title, composer, reference, key, genre, tags, labels) in the
-user's forScore sheet-music library on macOS. Read `get_conventions` before proposing changes.
-Never apply a changeset the user has not approved; always preview first, and ask the user to
-quit forScore on the Mac before `apply_changeset`."""
+Tools to read and fix metadata (title, composer, reference, key, rating, difficulty, duration,
+genre, tags, labels, libraries) of scores and bookmarks in the user's forScore sheet-music
+library on macOS. Read `get_conventions` before proposing changes. Never apply a changeset the
+user has not approved; always preview first, and ask the user to quit forScore on the Mac
+before `apply_changeset`."""
 
 READ = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False)
@@ -36,7 +37,7 @@ def _tool(annotations: ToolAnnotations) -> Callable[[Callable[..., Any]], Callab
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
-            except ForScoreError as exc:
+            except (ForScoreError, ValueError) as exc:
                 raise ToolError(str(exc)) from exc
 
         return server.tool(annotations=annotations)(wrapper)
@@ -45,36 +46,74 @@ def _tool(annotations: ToolAnnotations) -> Callable[[Callable[..., Any]], Callab
 
 
 @_tool(READ)
-def list_scores(query: str | None = None) -> list[dict[str, Any]]:
-    """List all scores with their metadata, optionally filtered by a case-insensitive search
-    over title, reference, composers, genres and tags."""
-    return [s.to_dict() for s in Library().scores(query)]
+def list_scores(
+    query: str | None = None,
+    kind: ItemKind | None = None,
+    composer: str | None = None,
+    genre: str | None = None,
+    tag: str | None = None,
+    label: str | None = None,
+    library: str | None = None,
+    missing: str | None = None,
+    offset: int = 0,
+    limit: int = 50,
+    full: bool = False,
+) -> dict[str, Any]:
+    """List scores and their bookmarks, a page at a time (see `total`; raise `offset` for more).
+    Filters combine: `query` searches titles, references, composers, genres and tags;
+    composer/genre/tag/label/library match a value exactly; `kind` is "score" or "bookmark";
+    `missing` names a field that must be empty (e.g. "composers", "reference", "key").
+    Items are compact (empty fields omitted) unless `full` is true."""
+    filters = Filters(query, kind, composer, genre, tag, label, library, missing)
+    page = Library().page(filters, offset=offset, limit=limit)
+    return {
+        "total": page.total,
+        "offset": page.offset,
+        "items": [item.to_dict(compact=not full) for item in page.items],
+    }
 
 
 @_tool(READ)
 def get_score(match: str) -> dict[str, Any]:
-    """Get one score by UUID or exact (case-insensitive) title."""
-    return Library().score(match).to_dict()
+    """Get one score or bookmark by UUID, exact title, or "Score › Bookmark"."""
+    return Library().item(match).to_dict()
 
 
 @_tool(READ)
 def list_values(kind: MetaKind) -> list[dict[str, Any]]:
-    """List every composer, genre, tag or label value in use, with how many scores use it."""
+    """List every composer, genre, tag, label or library in use, with usage counts
+    (and sort names for composers)."""
     return [v.to_dict() for v in Library().values(kind)]
 
 
 @_tool(READ)
+def list_setlists() -> list[dict[str, Any]]:
+    """List setlists with their scores and bookmarks in order."""
+    return [s.to_dict() for s in Library().setlists()]
+
+
+@_tool(READ)
+def audit_library() -> dict[str, Any]:
+    """Find likely duplicate titles, identical PDFs, PDF file names that differ from titles
+    (rename those in forScore: changing a title there can rename the file), and composer sort
+    names worth checking."""
+    return Library().audit().to_dict()
+
+
+@_tool(READ)
 def preview_changeset(changeset: dict[str, Any]) -> dict[str, Any]:
-    """Dry-run a changeset on a copy of the library and return the per-score diff.
-    Format: {"renames": {"composers": {"Old": "New"}}, "scores": [{"match": "<uuid or title>",
-    "set": {"title", "reference", "key", "composers", "genres", "tags", "labels"},
-    "add": {"tags": [...]}, "remove": {...}}], "prune": true}. Safe while forScore is open."""
+    """Dry-run a changeset on a copy of the library and return the per-item diff.
+    Format: {"renames": {"composers": {"Old": "New"}}, "sort_names": {"Composer": "Sort"},
+    "items": [{"match": "<uuid, title or 'Score › Bookmark'>", "set": {"title", "reference",
+    "key", "rating" (0-5), "difficulty" (0-3), "duration" ("m:ss"), "composers", "genres",
+    "tags", "labels", "libraries"}, "add": {"tags": [...]}, "remove": {...}}], "prune": true}.
+    Safe while forScore is open."""
     return Library().preview(changeset).to_dict()
 
 
 @_tool(WRITE)
 def apply_changeset(changeset: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
-    """Apply a changeset to the live library (backup first, single transaction).
+    """Apply a changeset to the library and its sync files (backup first).
     Requires forScore to be quit on the Mac. Without confirm=true this only previews."""
     library = Library()
     report = library.apply(changeset) if confirm else library.preview(changeset)
@@ -112,16 +151,13 @@ def restore_backup(backup_id: str, confirm: bool = False) -> dict[str, str]:
 @_tool(READ)
 def convert_key(value: str) -> dict[str, Any]:
     """Convert between a key name ("E♭ major") and forScore's stored code (300)."""
-    try:
-        code = int(value) if value.strip().isdigit() else keys.encode(value)
-        return {"name": keys.decode(code), "code": code}
-    except ValueError as exc:
-        raise ToolError(str(exc)) from exc
+    code = int(value) if value.strip().isdigit() else keys.encode(value)
+    return {"name": keys.decode(code), "code": code}
 
 
 @_tool(READ)
 def doctor() -> list[dict[str, object]]:
-    """Check that the library is reachable and whether changes can be applied right now."""
+    """Check that the library is reachable, in sync, and whether changes can be applied now."""
     return [c.to_dict() for c in run_checks()]
 
 

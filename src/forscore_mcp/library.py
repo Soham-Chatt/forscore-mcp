@@ -5,13 +5,50 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Generator
 from contextlib import closing, contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 from . import changeset as cs
 from . import paths, safety, syncfiles
+from .audit import AuditReport
+from .audit import run as run_audit
 from .db import connect, require_integrity, snapshot, transaction
-from .models import MetaKind, MetaValue, Score
+from .models import FIELDS, Item, ItemKind, MetaKind, MetaValue, Setlist
 from .repository import Store
+
+
+@dataclass(frozen=True)
+class Filters:
+    """Item filters; all given criteria must match. Value filters are exact, case-insensitive."""
+
+    query: str | None = None  # substring of title, parent, reference, composers, genres, tags
+    kind: ItemKind | None = None
+    composer: str | None = None
+    genre: str | None = None
+    tag: str | None = None
+    label: str | None = None
+    library: str | None = None
+    missing: str | None = None  # a field name: only items where it is empty
+
+    def matches(self, item: Item) -> bool:
+        if self.kind and item.kind is not self.kind:
+            return False
+        if self.query and self.query.casefold() not in _haystack(item):
+            return False
+        for wanted, values in (
+            (self.composer, item.composers), (self.genre, item.genres), (self.tag, item.tags),
+            (self.label, item.labels), (self.library, item.libraries),
+        ):  # fmt: skip
+            if wanted and wanted.casefold() not in {v.casefold() for v in values}:
+                return False
+        return not self.missing or item.get(self.missing) in (None, [], "")
+
+
+@dataclass(frozen=True)
+class Page:
+    total: int
+    offset: int
+    items: list[Item]
 
 
 class Library:
@@ -19,6 +56,7 @@ class Library:
         self.path = path or paths.library_path()
         self.backup_dir = backup_dir or paths.backup_dir()
         self.sync_dir = syncfiles.sync_dir(self.path)
+        self.documents = paths.documents_dir(self.path)
 
     @contextmanager
     def _store(self, *, write: bool = False) -> Generator[Store]:
@@ -27,25 +65,37 @@ class Library:
 
     # ---- reads -------------------------------------------------------------------------
 
-    def scores(self, query: str | None = None) -> list[Score]:
+    def items(self, filters: Filters | None = None) -> list[Item]:
+        filters = filters or Filters()
+        if filters.missing and filters.missing not in FIELDS:
+            raise ValueError(f"Unknown field {filters.missing!r}; use one of {list(FIELDS)}.")
         with self._store() as store:
-            scores = store.scores()
-        if not query:
-            return scores
-        needle = query.casefold()
-        return [s for s in scores if needle in _haystack(s)]
+            return [item for item in store.items() if filters.matches(item)]
 
-    def score(self, match: str) -> Score:
+    def page(self, filters: Filters | None = None, *, offset: int = 0, limit: int = 50) -> Page:
+        items = self.items(filters)
+        return Page(len(items), offset, items[offset : offset + max(limit, 0)])
+
+    def item(self, match: str) -> Item:
         with self._store() as store:
-            return store.score(store.find(match))
+            return store.item(store.find(match))
 
     def values(self, kind: MetaKind) -> list[MetaValue]:
         with self._store() as store:
             return store.values(kind)
 
+    def setlists(self) -> list[Setlist]:
+        with self._store() as store:
+            return store.setlists()
+
+    def audit(self) -> AuditReport:
+        with self._store() as store:
+            items, composers = store.items(), store.values(MetaKind.COMPOSERS)
+        return run_audit(items, composers, self.documents)
+
     def sync_drift(self) -> list[syncfiles.Drift]:
         """Differences between the library and the sync files other devices receive."""
-        return syncfiles.drift(self.sync_dir, self.scores())
+        return syncfiles.drift(self.sync_dir, self.items())
 
     # ---- writes ------------------------------------------------------------------------
 
@@ -103,6 +153,6 @@ class Library:
             yield conn
 
 
-def _haystack(score: Score) -> str:
-    parts = [score.title, score.reference or "", *score.composers, *score.genres, *score.tags]
+def _haystack(item: Item) -> str:
+    parts = [item.name, item.reference or "", *item.composers, *item.genres, *item.tags]
     return " ".join(parts).casefold()
