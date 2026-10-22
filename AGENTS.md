@@ -46,5 +46,6 @@ exposed by both the CLI and the MCP server.
   forScore's store, document it there.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `test:`, `refactor:`); work
   on a branch and merge to `main` through a pull request with green CI.
-- The version lives in `pyproject.toml`, the two plugin manifests and `plugin/.mcp.json`;
+- The version lives in `pyproject.toml`, `plugin/.claude-plugin/plugin.json` and `plugin/.mcp.json`
+  (never in `marketplace.json`);
   `tests/test_versions.py` keeps them in sync. See `docs/releasing.md`.

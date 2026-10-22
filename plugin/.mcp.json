@@ -2,7 +2,7 @@
   "mcpServers": {
     "forscore": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/Soham-Chatt/forscore-mcp@v0.1.0", "forscore-mcp"]
+      "args": ["--from", "git+https://github.com/Soham-Chatt/forscore-mcp@v0.1.1", "forscore-mcp"]
     }
   }
 }
