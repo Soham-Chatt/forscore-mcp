@@ -12,7 +12,7 @@ from forscore_mcp.errors import (
     NotFoundError,
     SchemaError,
 )
-from forscore_mcp.library import Library
+from forscore_mcp.library import Filters, Library
 from forscore_mcp.models import MetaKind
 
 ELISE: dict[str, Any] = {
@@ -33,20 +33,26 @@ CLEANUP: dict[str, Any] = {
 
 
 def test_reads(library: Library) -> None:
-    scores = library.scores()
-    assert [s.title for s in scores] == ["Fur Elise", "Waltz in B Minor", "Wet Hands"]
-    wet = library.score("Wet Hands")
+    scores = library.items()
+    assert [s.name for s in scores] == [
+        "Fur Elise",
+        "Kinderszenen",
+        "Kinderszenen › Träumerei",
+        "Waltz in B Minor",
+        "Wet Hands",
+    ]
+    wet = library.item("Wet Hands")
     assert wet.key == "A major"
     assert wet.tags == ["Minecraft"]
     assert wet.labels == ["Game"]
-    assert [s.title for s in library.scores("chopin")] == ["Waltz in B Minor"]
+    assert [s.title for s in library.items(Filters(query="chopin"))] == ["Waltz in B Minor"]
     genres = {v.value: v.count for v in library.values(MetaKind.GENRES)}
     assert genres == {"Classical": 2, "Soundtrack": 1}
 
 
 def test_score_not_found(library: Library) -> None:
     with pytest.raises(NotFoundError):
-        library.score("Nope")
+        library.item("Nope")
 
 
 def test_preview_does_not_write(library: Library) -> None:
@@ -55,18 +61,18 @@ def test_preview_does_not_write(library: Library) -> None:
     assert report.changes["Für Elise"]["key"] == ["C major", "A minor"]
     assert report.changes["Für Elise"]["composers"] == [["Beethoven"], ["Ludwig van Beethoven"]]
     assert report.pruned == {"composers": ["Chopin"], "tags": ["Unused tag"]}
-    assert library.score("UUID-ELISE").title == "Fur Elise"
+    assert library.item("UUID-ELISE").title == "Fur Elise"
 
 
 def test_apply(library: Library, library_file: Path) -> None:
     report = library.apply(CLEANUP)
     assert not report.dry_run
     assert report.backup is not None
-    elise = library.score("UUID-ELISE")
+    elise = library.item("UUID-ELISE")
     assert (elise.title, elise.reference, elise.key) == ("Für Elise", "WoO 59", "A minor")
     assert elise.composers == ["Ludwig van Beethoven"]
     assert elise.tags == ["ABRSM Grade 5"]
-    waltz = library.score("UUID-WALTZ")
+    waltz = library.item("UUID-WALTZ")
     assert (waltz.composers, waltz.genres) == (["Frédéric Chopin"], ["Romantic"])
 
     with sqlite3.connect(library_file) as conn:
@@ -101,7 +107,7 @@ def test_rename_merges_into_existing(library: Library) -> None:
 
 def test_remove_values(library: Library) -> None:
     library.apply({"scores": [{"match": "Wet Hands", "remove": {"labels": ["Game"]}}]})
-    assert library.score("Wet Hands").labels == []
+    assert library.item("Wet Hands").labels == []
     assert library.values(MetaKind.LABELS) == []
 
 
@@ -117,7 +123,7 @@ def test_bad_changeset_writes_nothing(library: Library) -> None:
     with pytest.raises(ChangesetError):
         library.apply(bad)
     assert library.backups() == []
-    assert library.score("Wet Hands").key == "A major"
+    assert library.item("Wet Hands").key == "A major"
 
 
 @pytest.mark.parametrize(
@@ -142,7 +148,7 @@ def test_backup_and_restore(library: Library) -> None:
     first = library.backup()
     library.apply(CLEANUP)
     safety_copy = library.restore(first.id)
-    assert library.score("UUID-ELISE").title == "Fur Elise"
+    assert library.item("UUID-ELISE").title == "Fur Elise"
     assert {b.id for b in library.backups()} >= {first.id, safety_copy.id}
     with pytest.raises(NotFoundError):
         library.restore("missing")
@@ -150,7 +156,7 @@ def test_backup_and_restore(library: Library) -> None:
 
 def test_missing_library(tmp_path: Path) -> None:
     with pytest.raises(LibraryNotFoundError):
-        Library(tmp_path / "nope.4sl").scores()
+        Library(tmp_path / "nope.4sl").items()
 
 
 def test_unknown_schema(tmp_path: Path) -> None:
@@ -158,4 +164,4 @@ def test_unknown_schema(tmp_path: Path) -> None:
     with sqlite3.connect(path) as conn:
         conn.execute("CREATE TABLE t (x)")
     with pytest.raises(SchemaError):
-        Library(path).scores()
+        Library(path).items()

@@ -20,7 +20,7 @@ def elise_file(library: Library) -> dict:
 
 
 def test_fresh_fixture_drifts(library: Library) -> None:
-    fields = {(d.score, d.field) for d in library.sync_drift()}
+    fields = {(d.item, d.field) for d in library.sync_drift()}
     assert ("Fur Elise", "composer") in fields
     assert ("Wet Hands", "composer") not in fields  # no sync file: nothing to compare
 
@@ -35,7 +35,7 @@ def test_apply_writes_sync_file(library: Library) -> None:
     assert data["keywords"] == "ABRSM Grade 5, Classics"
     assert data["composer"] == "Beethoven"
     assert (data["pages"], data["bpm"]) == ([1, 2], 90)  # unrelated keys are kept
-    assert "Für Elise" not in {d.score for d in library.sync_drift()}
+    assert "Für Elise" not in {d.item for d in library.sync_drift()}
 
 
 def test_empty_values_remove_keys(library: Library) -> None:
@@ -49,7 +49,7 @@ def test_list_order_is_not_drift(library: Library) -> None:
     data = syncfiles.read(path)
     data["composer"] = "Anon, Beethoven"
     syncfiles.write(path, data)
-    assert "Fur Elise" not in {d.score for d in library.sync_drift()}
+    assert "Fur Elise" not in {d.item for d in library.sync_drift()}
 
 
 def test_preview_leaves_sync_files_alone(library: Library) -> None:
@@ -65,7 +65,7 @@ def test_failed_sync_write_rolls_back(library: Library, monkeypatch: pytest.Monk
     monkeypatch.setattr(syncfiles, "update", boom)
     with pytest.raises(OSError):
         library.apply(CHANGE)
-    assert library.score("UUID-ELISE").title == "Fur Elise"
+    assert library.item("UUID-ELISE").title == "Fur Elise"
     assert elise_file(library)["title"] == "Fur Elise"
 
 
