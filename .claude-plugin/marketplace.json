@@ -1,0 +1,16 @@
+{
+  "name": "forscore-mcp",
+  "description": "forScore sheet-music library tools for Claude: MCP server and metadata skill.",
+  "owner": {
+    "name": "Soham-Chatt",
+    "url": "https://github.com/Soham-Chatt"
+  },
+  "plugins": [
+    {
+      "name": "forscore",
+      "source": "./plugin",
+      "description": "Read and clean up forScore sheet-music library metadata (composers, references, keys, genres, tags).",
+      "version": "0.1.0"
+    }
+  ]
+}
