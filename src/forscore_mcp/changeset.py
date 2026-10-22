@@ -93,8 +93,10 @@ def run(store: Store, changeset: Changeset, *, dry_run: bool) -> Report:
 
     for kind, mapping in changeset.renames.items():
         for old, new in mapping.items():
-            touched |= store.rename(kind, old, new)
-        report.renamed[kind.value] = dict(mapping)
+            items = store.rename(kind, old, new)
+            if items is not None:
+                touched |= items
+                report.renamed.setdefault(kind.value, {})[old] = new
 
     for change in changeset.scores:
         pk = store.find(change.match)

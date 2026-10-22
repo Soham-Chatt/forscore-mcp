@@ -152,6 +152,8 @@ def _read_json(file: str) -> Any:
 
 
 def _report(report: dict[str, Any]) -> tuple[Any, str]:
+    if not (report["changes"] or report["renamed"] or report["pruned"]):
+        return report, "No changes."
     lines = []
     for kind, mapping in report["renamed"].items():
         lines += [f"rename {kind}: {old} → {new}" for old, new in mapping.items()]
@@ -163,7 +165,7 @@ def _report(report: dict[str, Any]) -> tuple[Any, str]:
     lines.append(f"\n{report['scores_changed']} scores changed")
     if report["backup"]:
         lines.append(f"Backup: {report['backup']}")
-    return report, "\n".join(lines) if lines else "No changes."
+    return report, "\n".join(lines)
 
 
 def _summary(score: Score) -> str:
