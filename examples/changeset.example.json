@@ -2,11 +2,19 @@
   "renames": {
     "composers": { "Chopin": "Frédéric Chopin", "Lizst": "Franz Liszt" }
   },
-  "scores": [
+  "sort_names": { "Ralph Vaughan Williams": "Vaughan Williams" },
+  "items": [
     {
       "match": "Fur Elise",
-      "set": { "title": "Für Elise", "reference": "WoO 59", "key": "A minor", "genres": ["Classical"] },
-      "add": { "tags": ["ABRSM Grade 5"] }
+      "set": {
+        "title": "Für Elise", "reference": "WoO 59", "key": "A minor",
+        "genres": ["Classical"], "rating": 4, "difficulty": 2, "duration": "2:37"
+      },
+      "add": { "tags": ["ABRSM Grade 5"], "libraries": ["Personal"] }
+    },
+    {
+      "match": "Kinderszenen › Träumerei",
+      "set": { "reference": "Op. 15 No. 7", "key": "F major" }
     },
     {
       "match": "Family",

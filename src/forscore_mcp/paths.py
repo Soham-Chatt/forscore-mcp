@@ -16,3 +16,8 @@ def library_path() -> Path:
 
 def backup_dir() -> Path:
     return Path(os.environ.get("FORSCORE_BACKUP_DIR", DEFAULT_BACKUP_DIR)).expanduser()
+
+
+def documents_dir(library: Path) -> Path:
+    """forScore keeps PDFs in Data/Documents; the library is in Data/Library/Preferences."""
+    return library.parent.parent.parent / "Documents"

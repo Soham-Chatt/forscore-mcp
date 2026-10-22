@@ -20,7 +20,9 @@ the store, and refuses to work with a store that does not match.
 |---|---|---|
 | Item | `ZITEM` | parent of Score and Bookmark |
 | Score | `ZITEM` (`Z_ENT` = Score) | one PDF |
-| Bookmark | `ZITEM` (`Z_ENT` = Bookmark) | page range within a score (`ZSCORE` → parent) |
+| Bookmark | `ZITEM` (`Z_ENT` = Bookmark) | page range within a score: `ZSCORE` → parent, `ZSTARTPAGE`/`ZENDPAGE`; `ZPATH` repeats the parent's PDF |
+| Library | `ZLIBRARY` (`ZTITLE`) | membership through `Z_4LIBRARIES`, like metadata values |
+| Setlist | `ZSETLIST` (`ZTITLE`, `ZUUID`) | entries are `ZCYLON` rows (entity "Cylon"): `ZITEM`, `ZSETLIST`, ordered by `Z_FOK_SETLIST` |
 | Meta | `ZMETA` | parent of Composer, Genre, Keyword, Label, Difficulty, Rating; new rows take `Z_MAX + 1` of **Meta** |
 
 ## Item columns used
@@ -31,7 +33,9 @@ the store, and refuses to work with a store that does not match.
 | `ZTITLE`, `ZSORTTITLE` | title, and its sort form (leading article and punctuation removed) |
 | `ZREFERENCE` | free-text reference field (Op./BWV/…) |
 | `ZKEY` | three-digit key code (below) |
-| `ZPATH` | PDF file name in the app's Documents folder |
+| `ZPATH` | PDF file name in the app's `Data/Documents` folder |
+| `ZRATING`, `ZDIFFICULTY` | foreign keys to Rating (`ZVALUE5` = 1–5) and Difficulty (`ZVALUE1` = 1–3) rows in `ZMETA`, not the numbers themselves |
+| `ZMINUTES`, `ZSECONDS` | duration |
 | `Z_OPT`, `ZMODIFIED` | Core Data version counter; modification time in seconds since 2001-01-01 |
 
 ## Metadata values (`ZMETA`)
@@ -44,8 +48,7 @@ the store, and refuses to work with a store that does not match.
 | labels | Label | `ZVALUE4` | `Z_4LABELS` |
 
 Join-table and column names include entity ids (`Z_4ITEMS1`, `Z_10COMPOSERS`, …); `schema.py`
-derives them instead of hard-coding them. Difficulty (`ZVALUE1`) and rating (`ZVALUE5`) are
-not handled yet.
+derives them instead of hard-coding them. Libraries use the same pattern with `ZLIBRARY.ZTITLE`.
 
 ## Key code
 
@@ -64,9 +67,21 @@ forScore does **not** sync the database. It syncs one sync file per score,
 that score's metadata, pages and other data. The app rewrites a score's file whenever the
 score is edited in the app.
 
-The metadata keys this tool writes are `title`, `composer`, `genre`, `keywords` (tags),
-`labels`, `reference` and `key` (the same code as `ZKEY`). Lists are joined with ", ", and an
-empty value removes the key. `Sync/*.lib` files hold the libraries.
+The metadata keys this tool writes are:
+- Scores: `title`, `composer`, `genre`, `keywords` (tags), `labels`, `libraries`,
+  `reference`, `key` (the same code as `ZKEY`), `rating`, `difficulty`, `minutes` and
+  `seconds`.
+- Bookmarks: an entry in their score's `bookmarks` array, matched by `Identifier` (the
+  bookmark's `ZUUID`), with capitalised keys: `Title`, `Composer`, `Genre`, `Keyword`,
+  `Label`, `Reference`, `Key`, `Rating`, `Difficulty`, `Minutes`, `Seconds`. `First Page`,
+  `Last Page` and the rest are left alone.
+- Lists are joined with ", ", and an empty value removes the key.
+
+Other files in `Sync/`: `<name>.lib` per library (`title`, `index`); `<name>.set` per setlist
+(`title`, `menuIndex`, `items` of `{FilePath, Identifier, Title}`).
+
+forScore notices changed sync files through `.syncFolderState`, which lists each file's size and
+modification time.
 
 Editing only the database leaves the sync files stale, so other devices never see the change.
 This happened on 2026-10-22: after a direct database edit, the iPad kept the old names for 40

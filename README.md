@@ -11,12 +11,15 @@ command line.
 
 ## What it does
 
-- **Reads** every score with its metadata, and every composer, genre, tag and label in use.
+- **Reads** every score and bookmark with its metadata (filtered and paged for big libraries),
+  every composer, genre, tag, label and library in use, and your setlists.
 - **Changes** metadata in bulk through a *changeset*: a small JSON file describing renames and
   per-score edits. Changesets are always previewed first and applied in a single transaction.
 - **Keeps you safe:** it writes only while forScore is closed on the Mac, makes an automatic
   backup before each write, runs integrity checks, and has one-command restore. Changes sync
   to your iPad and other devices through forScore's own sync.
+- **Audits** the library for likely duplicates, identical PDFs, file names that differ from
+  titles, and composer sort names worth checking.
 - **Ships a conventions guide** (full composer names, `Op. 69 No. 2` references, genre = style
   period, …) so AI assistants make consistent choices. See
   [`conventions.md`](src/forscore_mcp/conventions.md).
@@ -87,8 +90,11 @@ From the command line:
 
 ```
 forscore-mcp doctor                       # check access; tells you how to fix problems
-forscore-mcp list chopin                  # search scores
-forscore-mcp show "Für Elise"             # one score's metadata
+forscore-mcp list chopin                  # search scores and bookmarks
+forscore-mcp list --missing composers     # filters: --composer/--genre/--tag/--library/--kind
+forscore-mcp show "Kinderszenen > Träumerei"   # one score or bookmark
+forscore-mcp setlists                     # setlists and their items
+forscore-mcp audit                        # duplicates, file names, sort names
 forscore-mcp values composers             # all composers, with usage counts
 forscore-mcp preview changes.json         # dry run (safe while forScore is open)
 forscore-mcp apply changes.json --yes     # back up, then apply (quit forScore first)
@@ -112,15 +118,18 @@ Add `--json` to any command for machine-readable output. A changeset looks like
 }
 ```
 
-`match` is a score's UUID or exact title. `set` replaces fields (`title`, `reference`, `key`,
-`composers`, `genres`, `tags`, `labels`); `add` and `remove` edit list fields. Values no score
-uses any more are removed unless you pass `"prune": false`.
+`match` is a UUID, an exact title, or `"Score › Bookmark"` (`>` works too). `set` replaces
+fields: `title`, `reference`, `key`, `rating` (0–5), `difficulty` (0–3), `duration` (`"m:ss"`),
+`composers`, `genres`, `tags`, `labels` and `libraries` (libraries must already exist).
+`add` and `remove` edit list fields. `sort_names` sets how composers are filed, e.g.
+`{"Ralph Vaughan Williams": "Vaughan Williams"}`. Values nothing uses any more are removed
+unless you pass `"prune": false`. PDF file names are never changed; rename those in forScore.
 
 ### MCP tools
 
 | Tool | Writes? |
 |---|---|
-| `list_scores`, `get_score`, `list_values`, `check_sync`, `convert_key`, `doctor`, `get_conventions` | no |
+| `list_scores` (filters, paging), `get_score`, `list_values`, `list_setlists`, `audit_library`, `check_sync`, `convert_key`, `doctor`, `get_conventions` | no |
 | `preview_changeset`, `list_backups`, `create_backup` | no (backups only) |
 | `apply_changeset(changeset, confirm)`, `restore_backup(backup_id, confirm)` | yes, only with `confirm=true` |
 

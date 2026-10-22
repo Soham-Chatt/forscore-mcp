@@ -21,7 +21,7 @@ def test_tools_registered() -> None:
 
 
 def test_read_tools() -> None:
-    assert len(call("list_scores")["result"]) == 3
+    assert call("list_scores")["total"] == 5
     assert call("get_score", match="Wet Hands")["key"] == "A major"
     assert call("convert_key", value="A minor") == {"name": "A minor", "code": 611}
 

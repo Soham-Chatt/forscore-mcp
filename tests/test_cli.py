@@ -19,7 +19,7 @@ def run(capsys: pytest.CaptureFixture[str], *argv: str) -> tuple[int, str, str]:
 def test_list_and_show(capsys: pytest.CaptureFixture[str]) -> None:
     code, out, _ = run(capsys, "list", "--json")
     assert code == 0
-    assert len(json.loads(out)) == 3
+    assert json.loads(out)["total"] == 5
     _, out, _ = run(capsys, "show", "Wet Hands")
     assert "A major" in out
     _, out, _ = run(capsys, "values", "genres")
@@ -33,11 +33,11 @@ def test_preview_then_apply(
     file.write_text(json.dumps(CHANGES))
     _, out, _ = run(capsys, "apply", str(file))
     assert "Preview only" in out
-    assert library.score("Wet Hands").key == "A major"
+    assert library.item("Wet Hands").key == "A major"
     code, out, _ = run(capsys, "apply", str(file), "--yes")
     assert code == 0
     assert "key: A major → A minor" in out
-    assert library.score("Wet Hands").key == "A minor"
+    assert library.item("Wet Hands").key == "A minor"
 
 
 @pytest.mark.usefixtures("library")
@@ -59,7 +59,7 @@ def test_key(capsys: pytest.CaptureFixture[str]) -> None:
 @pytest.mark.usefixtures("library")
 def test_doctor_and_backups(capsys: pytest.CaptureFixture[str]) -> None:
     _, out, _ = run(capsys, "doctor")
-    assert "3 scores" in out
+    assert "4 scores, 1 bookmarks" in out
     assert run(capsys, "backups")[1].strip() == "No backups."
     run(capsys, "backup")
     assert len(json.loads(run(capsys, "backups", "--json")[1])) == 1
