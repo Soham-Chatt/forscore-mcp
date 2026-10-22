@@ -1,6 +1,6 @@
 [project]
 name = "forscore-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "Read and clean up forScore library metadata from the CLI, an MCP server, or an LLM skill"
 readme = "README.md"
 authors = [
