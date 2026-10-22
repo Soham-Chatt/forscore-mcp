@@ -33,12 +33,23 @@ command line.
 
 ### Claude Code (plugin: MCP server + skill)
 
+In a Claude Code session:
+
 ```
-/plugin marketplace add Soham-Chatt/forscore-mcp
-/plugin install forscore@forscore-mcp
+/plugin install forscore --marketplace Soham-Chatt/forscore-mcp
 ```
 
-Update later with `/plugin marketplace update forscore-mcp`.
+Or from your shell: `claude plugin install forscore --marketplace Soham-Chatt/forscore-mcp`.
+On older Claude Code versions, run `/plugin marketplace add Soham-Chatt/forscore-mcp` and then
+`/plugin install forscore@forscore-mcp`.
+
+- **Updates:** run `claude plugin update forscore@forscore-mcp`, or turn on auto-update under
+  **Marketplaces** in `/plugin`.
+- **While the repository is private**, Claude Code clones it with your own git credentials and
+  can't prompt for them. Run `gh auth login` and `gh auth setup-git` once. If you have no GitHub
+  SSH key, also set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`.
+- **Supported apps:** the plugin works in Claude Code. On claude.ai and in Cowork it can't reach
+  your Mac's library, so use Claude Code or Claude Desktop there.
 
 ### Any other MCP client (Claude Desktop, Cursor, VS Code, Codex, Gemini CLI, …)
 
