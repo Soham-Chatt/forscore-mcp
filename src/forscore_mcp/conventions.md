@@ -14,16 +14,22 @@ is already consistent.
 | Key | Only for single pieces, and only when certain (C major and A minor share a key signature — check the music). Leave empty for collections. | A minor, E♭ major, F♯ minor |
 | Genre | One style period: Baroque, Classical, Romantic, Impressionist, 20th Century, Contemporary, Soundtrack. Soundtrack covers game, film, TV and anime music. | |
 | Tags | The source franchise (Pokemon, Super Mario Galaxy, How to Train Your Dragon); exam syllabus (`ABRSM Grade 5`); type (`Etudes`, `Technique`, `Collection` for multi-piece books). | |
-| Labels, folders, setlists, rating, difficulty | Leave unless the user asks; these reflect personal organisation. | |
+| Composer sort name | How forScore files the composer, normally the surname (`Beethoven` for Ludwig van Beethoven). Fix compound or unusual surnames with `sort_names`: `Vaughan Williams`, `Lloyd Webber`, `Rimsky-Korsakov`; group or alias names sort as written without a leading article. | |
+| Bookmarks | A piece inside a collection (e.g. *Kinderszenen › Träumerei*) gets the same rules as a score: its own title, composer, reference (`Op. 15 No. 7`), key. | |
+| Rating, difficulty, duration | Personal (rating 1–5, difficulty 1–3) or performance-specific (`m:ss`); set only when the user gives them. | |
+| Labels, libraries, folders, setlists | The user's own organisation; change only when asked. Libraries must already exist in forScore. | |
 
 ## Workflow
 
-1. Read the library (`list_scores`, `list_values`) and note inconsistencies: duplicates, typos
-   ("Lizst"), surnames vs full names, file-name-style titles (`Kabalevskij_op.39_24`), missing
-   references/genres.
+1. Read the library page by page (`list_scores`, filtered e.g. `missing="composers"`),
+   `list_values` and `audit_library`. Note inconsistencies: duplicates, typos ("Lizst"),
+   surnames vs full names, file-name-style titles (`Kabalevskij_op.39_24`), missing
+   references/genres, odd composer sort names.
 2. Propose the changes to the user as a table (current → proposed) and ask about anything
    uncertain (e.g. which piece a file really contains). Never invent catalogue numbers.
 3. Write the approved changes as one changeset. Use `renames` for values used by many scores.
+   PDF file names cannot be changed by the tool; tell the user to rename them in forScore
+   (changing a title there can rename the file).
 4. `preview_changeset` and show the user the summary.
 5. Ask the user to **quit forScore on the Mac** (the iPad can stay open), then
    `apply_changeset` with `confirm=true`. A backup is made automatically.

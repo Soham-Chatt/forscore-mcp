@@ -26,6 +26,7 @@ get the user's approval, ask them to quit forScore on the Mac, then
 | `repository.py` | `Store`: read and write primitives on one connection, no policy |
 | `changeset.py` | parse/validate changesets, run them on a `Store`, produce a diff `Report` |
 | `library.py` | `Library`: the public API; all safety policy lives here |
+| `audit.py` | read-only health checks: duplicates, file names, sort names |
 | `doctor.py` | environment checks |
 | `cli.py`, `server.py` | thin front-ends over `Library`; no business logic |
 | `conventions.md` | metadata conventions, shipped in the package; single source of truth |
