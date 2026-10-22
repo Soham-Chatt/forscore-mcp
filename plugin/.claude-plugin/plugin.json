@@ -1,0 +1,12 @@
+{
+  "name": "forscore",
+  "version": "0.1.0",
+  "description": "Read and clean up forScore sheet-music library metadata (composers, references, keys, genres, tags).",
+  "author": {
+    "name": "Soham-Chatt",
+    "url": "https://github.com/Soham-Chatt"
+  },
+  "homepage": "https://github.com/Soham-Chatt/forscore-mcp",
+  "repository": "https://github.com/Soham-Chatt/forscore-mcp",
+  "keywords": ["forscore", "sheet-music", "metadata", "mcp"]
+}

@@ -1,0 +1,17 @@
+{
+  "renames": {
+    "composers": { "Chopin": "Frédéric Chopin", "Lizst": "Franz Liszt" }
+  },
+  "scores": [
+    {
+      "match": "Fur Elise",
+      "set": { "title": "Für Elise", "reference": "WoO 59", "key": "A minor", "genres": ["Classical"] },
+      "add": { "tags": ["ABRSM Grade 5"] }
+    },
+    {
+      "match": "Family",
+      "set": { "composers": ["Mahito Yokota", "Koji Kondo"] }
+    }
+  ],
+  "prune": true
+}

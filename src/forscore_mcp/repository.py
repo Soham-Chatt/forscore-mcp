@@ -158,10 +158,15 @@ class Store:
                     (pk, meta_pk),
                 )
 
-    def rename(self, kind: MetaKind, old: str, new: str) -> set[int]:
-        """Rename a value everywhere; merges into ``new`` if it already exists."""
+    def rename(self, kind: MetaKind, old: str, new: str) -> set[int] | None:
+        """Rename a value everywhere; merges into ``new`` if it already exists.
+
+        Returns the affected items, or None if ``old`` is gone but ``new`` exists (already done).
+        """
         old_pk = self._meta_pk(kind, old)
         if old_pk is None:
+            if self._meta_pk(kind, new) is not None:
+                return None
             raise NotFoundError(f"No {kind.value[:-1]} called {old!r}.")
         items = self._items_with(kind, old_pk)
         existing = self._meta_pk(kind, new)

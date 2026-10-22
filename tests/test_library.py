@@ -85,8 +85,13 @@ def test_apply(library: Library, library_file: Path) -> None:
 
 def test_apply_is_idempotent(library: Library) -> None:
     library.apply(CLEANUP)
-    second = {"scores": [{**ELISE, "match": "UUID-ELISE"}]}
-    assert library.preview(second).empty
+    second = {"renames": CLEANUP["renames"], "scores": [{**ELISE, "match": "UUID-ELISE"}]}
+    assert not library.preview(second).changes
+
+
+def test_rename_of_missing_value_fails(library: Library) -> None:
+    with pytest.raises(NotFoundError):
+        library.preview({"renames": {"composers": {"Nobody": "Somebody"}}})
 
 
 def test_rename_merges_into_existing(library: Library) -> None:
