@@ -19,10 +19,17 @@ def backup_dir() -> Path:
     return Path(os.environ.get("FORSCORE_BACKUP_DIR", DEFAULT_BACKUP_DIR)).expanduser()
 
 
+def state_dir() -> Path:
+    return Path(os.environ.get("FORSCORE_STATE_DIR", DEFAULT_STATE_DIR)).expanduser()
+
+
 def imports_dir() -> Path:
     """Where generated import CSVs and their expected results are kept."""
-    state = Path(os.environ.get("FORSCORE_STATE_DIR", DEFAULT_STATE_DIR)).expanduser()
-    return state / "imports"
+    return state_dir() / "imports"
+
+
+def config_file() -> Path:
+    return state_dir() / "config.json"
 
 
 def documents_dir(library: Path) -> Path:

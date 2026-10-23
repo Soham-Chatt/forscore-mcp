@@ -17,8 +17,8 @@ class AppRunningError(ForScoreError):
     """forScore is running, so writing to its library is unsafe."""
 
 
-class DangerZoneError(ForScoreError):
-    """A direct database write was requested without enabling the danger zone."""
+class DirectWritesDisabledError(ForScoreError):
+    """A direct database write was requested while direct writes are off."""
 
 
 class ChangesetError(ForScoreError):

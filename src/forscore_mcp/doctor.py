@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from .errors import ForScoreError
 from .library import Library
 from .models import ItemKind
-from .safety import danger_zone_enabled, forscore_running
+from .safety import direct_writes_enabled, forscore_running
 
 
 @dataclass(frozen=True)
@@ -58,17 +58,18 @@ def run_checks(library: Library | None = None) -> list[Check]:
         )
     except (ForScoreError, OSError) as exc:
         checks.append(Check("sync files", False, f"Cannot read sync files: {exc}"))
-    danger = danger_zone_enabled()
+    direct = direct_writes_enabled()
     checks.append(
         Check(
             "write mode",
             True,
-            "DANGER ZONE: direct database writes are allowed (unsupported by forScore)."
-            if danger
+            "Direct writes ON: database edits allowed (unsupported by forScore). "
+            "Turn off with `forscore-mcp direct-writes disable`."
+            if direct
             else "CSV import via forScore (supported); direct writes are off.",
         )
     )
-    if danger:
+    if direct:
         running = forscore_running()
         checks.append(
             Check(

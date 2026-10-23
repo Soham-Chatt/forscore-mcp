@@ -104,7 +104,7 @@ def library_file(tmp_path: Path) -> Path:
 
 
 class DirectLibrary(Library):
-    """Writes straight to the database (danger zone); used by the direct-write tests."""
+    """Writes straight to the database (direct writes on); used by the direct-write tests."""
 
     def apply(self, data, *, method="direct", deliver=False):  # type: ignore[override]
         return super().apply(data, method=method, deliver=deliver)
@@ -126,13 +126,13 @@ def environment(
     monkeypatch.setenv("FORSCORE_LIBRARY", str(library_file))
     monkeypatch.setenv("FORSCORE_BACKUP_DIR", str(tmp_path / "backups"))
     monkeypatch.setenv("FORSCORE_STATE_DIR", str(tmp_path / "state"))
-    monkeypatch.delenv(safety.DANGER_ENV, raising=False)
+    monkeypatch.delenv(safety.DIRECT_WRITES_ENV, raising=False)
 
 
 @pytest.fixture
 def library(environment: None, monkeypatch: pytest.MonkeyPatch) -> Library:
-    """Danger zone on, direct writes by default (most write tests exercise the store)."""
-    monkeypatch.setenv(safety.DANGER_ENV, safety.DANGER_VALUE)
+    """Direct writes on, direct writes by default (most write tests exercise the store)."""
+    monkeypatch.setenv(safety.DIRECT_WRITES_ENV, safety.DIRECT_WRITES_PHRASE)
     return DirectLibrary()
 
 

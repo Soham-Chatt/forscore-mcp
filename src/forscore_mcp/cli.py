@@ -9,7 +9,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
-from . import __version__, conventions, keys
+from . import __version__, conventions, keys, safety
 from .doctor import run_checks
 from .errors import ForScoreError
 from .library import Filters, Library
@@ -67,7 +67,7 @@ def _parser() -> argparse.ArgumentParser:
     apply.add_argument("file")
     apply.add_argument("--yes", action="store_true", help="actually write (default: preview)")
     apply.add_argument(
-        "--direct", action="store_true", help="danger zone: write the database directly"
+        "--direct", action="store_true", help="write the database directly (needs direct writes on)"
     )
     command("verify", _verify, "check that forScore applied an import").add_argument("import_id")
     undo = command("undo", _undo, "create a CSV that reverts an import")
@@ -81,6 +81,11 @@ def _parser() -> argparse.ArgumentParser:
     restore = command("restore", _restore, "restore a backup")
     restore.add_argument("backup_id")
     restore.add_argument("--yes", action="store_true", help="confirm overwriting the library")
+    direct = command(
+        "direct-writes", _direct_writes, "turn unsupported direct database writes on or off"
+    )
+    direct.add_argument("action", choices=["status", "enable", "disable"])
+    direct.add_argument("phrase", nargs="?", help="required to enable; run without it to see it")
     command("key", _key, "convert a key name to its code or back").add_argument("value")
     command("conventions", _conventions, "print the metadata conventions guide")
     return parser
@@ -194,7 +199,9 @@ def _backups(_: argparse.Namespace) -> tuple[Any, str]:
     return [b.to_dict() for b in backups], "\n".join(b.id for b in backups) or "No backups."
 
 
-def _restore(args: argparse.Namespace) -> tuple[Any, str]:  # danger zone (checked in Library)
+def _restore(
+    args: argparse.Namespace,
+) -> tuple[Any, str]:  # direct writes only (checked in Library)
     if not args.yes:
         raise ValueError("Restoring overwrites the library; re-run with --yes to confirm.")
     previous = Library().restore(args.backup_id)
@@ -202,6 +209,29 @@ def _restore(args: argparse.Namespace) -> tuple[Any, str]:  # danger zone (check
         {"restored": args.backup_id, "previous_state_backup": previous.id},
         f"Restored {args.backup_id}. The state before restoring is saved as {previous.id}.",
     )
+
+
+def _direct_writes(args: argparse.Namespace) -> tuple[Any, str]:
+    if args.action == "enable":
+        if args.phrase != safety.DIRECT_WRITES_PHRASE:
+            problem = "No confirmation phrase given." if not args.phrase else "Wrong phrase."
+            raise ValueError(
+                f"{problem} {safety.DIRECT_WRITES_RISK}\nTo accept the risk, run:\n"
+                f"  {safety.ENABLE_COMMAND}"
+            )
+        safety.set_direct_writes(True)
+    elif args.action == "disable":
+        safety.set_direct_writes(False)
+    enabled = safety.direct_writes_enabled()
+    text = (
+        "Direct writes are ON (unsupported by forScore; a backup is made before each write). "
+        "Turn off with `forscore-mcp direct-writes disable`."
+        if enabled
+        else "Direct writes are off: changes go through forScore's CSV import."
+    )
+    if args.action == "disable" and enabled:
+        text += f" (Still on through the {safety.DIRECT_WRITES_ENV} environment variable.)"
+    return {"direct_writes": enabled}, text
 
 
 def _key(args: argparse.Namespace) -> tuple[Any, str]:

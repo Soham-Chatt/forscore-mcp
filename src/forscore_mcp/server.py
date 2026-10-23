@@ -119,9 +119,9 @@ def apply_changeset(
     method "csv" (default, supported by forScore): creates an import CSV and sends it to
     forScore; tell the user the `next_step` (import it in Backups › Metadata, check forScore's
     preview, tap Save), then call `verify_import`. Changes CSV cannot carry are listed under
-    `skipped`. method "direct" writes the database itself; it only works if the user enabled
-    the danger zone, needs forScore quit, and should only be used for skipped changes such as
-    library membership or composer sort names."""
+    `skipped`. method "direct" writes the database itself (unsupported by forScore); it only
+    works if the user turned on direct writes themselves, needs forScore quit, and should only
+    be used for skipped changes such as library membership or composer sort names."""
     library = Library()
     report = library.apply(changeset, method=method) if confirm else library.preview(changeset)
     return report.to_dict()
@@ -164,7 +164,8 @@ def create_backup() -> dict[str, str]:
 @_tool(WRITE)
 def restore_backup(backup_id: str, confirm: bool = False) -> dict[str, str]:
     """Replace the library with a backup (the current state is backed up first).
-    Danger zone only; requires forScore to be quit and confirm=true. Prefer undo_import."""
+    Only with direct writes on; requires forScore to be quit and confirm=true. Prefer
+    undo_import."""
     if not confirm:
         raise ToolError("Restoring overwrites the library; call again with confirm=true.")
     return {"restored": backup_id, "previous_state_backup": Library().restore(backup_id).id}

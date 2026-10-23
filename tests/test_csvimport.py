@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from forscore_mcp import csvimport, keys, safety
-from forscore_mcp.errors import DangerZoneError
+from forscore_mcp.errors import DirectWritesDisabledError
 from forscore_mcp.library import Library
 from forscore_mcp.models import MetaKind
 
@@ -22,9 +22,9 @@ def rows(path: str) -> list[dict[str, str]]:
 
 def simulate_forscore_import(monkeypatch: pytest.MonkeyPatch, changes: dict) -> None:
     """Stand-in for the user tapping Save in forScore: apply the same values directly."""
-    monkeypatch.setenv(safety.DANGER_ENV, safety.DANGER_VALUE)
+    monkeypatch.setenv(safety.DIRECT_WRITES_ENV, safety.DIRECT_WRITES_PHRASE)
     Library().apply(changes, method="direct")
-    monkeypatch.delenv(safety.DANGER_ENV)
+    monkeypatch.delenv(safety.DIRECT_WRITES_ENV)
 
 
 def test_apply_writes_csv_and_leaves_library_alone(
@@ -130,11 +130,11 @@ def test_unknown_import(safe_library: Library) -> None:
         safe_library.verify_import("nope")
 
 
-def test_direct_writes_and_restore_need_danger_zone(safe_library: Library) -> None:
-    with pytest.raises(DangerZoneError):
+def test_direct_writes_and_restore_need_direct_writes(safe_library: Library) -> None:
+    with pytest.raises(DirectWritesDisabledError):
         safe_library.apply({"items": [ELISE]}, method="direct")
     backup = safe_library.backup()  # backups are read-only and always allowed
-    with pytest.raises(DangerZoneError):
+    with pytest.raises(DirectWritesDisabledError):
         safe_library.restore(backup.id)
 
 
