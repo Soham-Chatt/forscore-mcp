@@ -24,6 +24,8 @@ jobs:
       - run: uv run --locked ruff check .
       - run: uv run --locked ruff format --check .
       - run: uv run --locked ty check
+      - name: Reference docs are up to date
+        run: uv run --locked python scripts/gen_reference.py --check
 
   plugin:
     runs-on: ubuntu-latest

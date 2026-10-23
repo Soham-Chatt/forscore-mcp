@@ -49,6 +49,9 @@ exposed by both the CLI and the MCP server.
   (`safety.require_quit`), a backup before writing, one transaction, integrity checks,
   `Store.touch` on changed items, and updating their sync files (`syncfiles.update`). Other
   devices only see what is in the sync files.
+- After changing an MCP tool or CLI command, run `uv run python scripts/gen_reference.py`. It
+  regenerates `docs/reference.md` from the docstrings and type hints, and CI fails if the file
+  is out of date. Tool docstrings are the user-facing documentation: keep them accurate.
 - Schema knowledge belongs in `schema.py` and `docs/schema.md`. If you discover something new about
   forScore's store, document it there.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `ci:`, `chore:`, `test:`, `refactor:`); work
