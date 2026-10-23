@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from forscore_mcp import paths, safety, syncfiles
+from forscore_mcp import csvimport, paths, safety, syncfiles
 from forscore_mcp.library import Library
 
 SCHEMA = Path(__file__).parent / "fixtures" / "schema.sql"
@@ -103,9 +103,40 @@ def library_file(tmp_path: Path) -> Path:
     return build_library(preferences / "library.4sl")
 
 
+class DirectLibrary(Library):
+    """Writes straight to the database (danger zone); used by the direct-write tests."""
+
+    def apply(self, data, *, method="direct", deliver=False):  # type: ignore[override]
+        return super().apply(data, method=method, deliver=deliver)
+
+
 @pytest.fixture
-def library(library_file: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Library:
+def delivered(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+    """Records CSVs handed to forScore instead of opening the app."""
+    sent: list[Path] = []
+    monkeypatch.setattr(csvimport, "deliver", lambda path: sent.append(path) or True)
+    return sent
+
+
+@pytest.fixture
+def environment(
+    library_file: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, delivered: list[Path]
+) -> None:
     monkeypatch.setattr(safety, "forscore_running", lambda: False)
     monkeypatch.setenv("FORSCORE_LIBRARY", str(library_file))
     monkeypatch.setenv("FORSCORE_BACKUP_DIR", str(tmp_path / "backups"))
+    monkeypatch.setenv("FORSCORE_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.delenv(safety.DANGER_ENV, raising=False)
+
+
+@pytest.fixture
+def library(environment: None, monkeypatch: pytest.MonkeyPatch) -> Library:
+    """Danger zone on, direct writes by default (most write tests exercise the store)."""
+    monkeypatch.setenv(safety.DANGER_ENV, safety.DANGER_VALUE)
+    return DirectLibrary()
+
+
+@pytest.fixture
+def safe_library(environment: None) -> Library:
+    """The default configuration: CSV import only."""
     return Library()

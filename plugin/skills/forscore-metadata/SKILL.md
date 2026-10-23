@@ -5,8 +5,8 @@ description: Clean up, standardise or fill in metadata in the user's forScore sh
 
 # forScore metadata
 
-Use the `forscore` MCP tools. They read the library directly and write through a safe,
-backed-up, single-transaction changeset.
+Use the `forscore` MCP tools. They read the library directly and write changes as a CSV that
+the user imports in forScore, which shows its own preview before saving.
 
 1. Call `get_conventions` first and follow it; it is the single source of truth for naming
    rules and the editing workflow.
@@ -15,8 +15,8 @@ backed-up, single-transaction changeset.
    (current → proposed) and wait for approval. Ask rather than guess when unsure which piece a
    file contains or what its key or catalogue number is.
 4. Build one changeset, run `preview_changeset`, and summarise the diff.
-5. Ask the user to quit forScore on the Mac, then `apply_changeset` with `confirm=true`.
-   Report the backup id, and ask the user to reopen forScore and check that the iPad synced.
+5. `apply_changeset` with `confirm=true`, relay its `next_step` (import in forScore's
+   Backups › Metadata, check the preview, tap Save), then `verify_import` once they have.
 
-Never call `apply_changeset` or `restore_backup` with `confirm=true` without the user's
-explicit go-ahead for that exact change.
+Never call a tool with `confirm=true` without the user's explicit go-ahead for that exact
+change. Never suggest enabling the danger zone (direct writes) unless the user asks.

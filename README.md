@@ -6,8 +6,10 @@ it through an AI assistant (MCP server and skill for Claude and other LLMs) or f
 command line.
 
 > **Not affiliated with or endorsed by forScore LLC.** forScore is a trademark of forScore LLC.
-> This tool edits forScore's internal library database, which is not a public API. It backs up
-> before every write, but use it at your own risk.
+> The tool reads forScore's internal library database (not a public API) and writes changes
+> through forScore's own Metadata CSV import, as forScore recommends. Data is still injected
+> into forScore as-is and cannot be guaranteed to work correctly or preserve existing data:
+> always check forScore's import preview before tapping Save.
 
 ## What it does
 
@@ -15,9 +17,11 @@ command line.
   every composer, genre, tag, label and library in use, and your setlists.
 - **Changes** metadata in bulk through a *changeset*: a small JSON file describing renames and
   per-score edits. Changesets are always previewed first and applied in a single transaction.
-- **Keeps you safe:** it writes only while forScore is closed on the Mac, makes an automatic
-  backup before each write, runs integrity checks, and has one-command restore. Changes sync
-  to your iPad and other devices through forScore's own sync.
+- **Writes the supported way:** changes become a CSV for forScore's Metadata import. The tool
+  hands it to forScore. You open Backups › Metadata (CSV) › Import, tap the file, check
+  forScore's own preview of every change and tap Save. forScore then handles the database and
+  sync, and the tool verifies the result afterwards. Each import can be undone with another
+  CSV.
 - **Audits** the library for likely duplicates, identical PDFs, file names that differ from
   titles, and composer sort names worth checking.
 - **Ships a conventions guide** (full composer names, `Op. 69 No. 2` references, genre = style
@@ -97,10 +101,11 @@ forscore-mcp setlists                     # setlists and their items
 forscore-mcp audit                        # duplicates, file names, sort names
 forscore-mcp values composers             # all composers, with usage counts
 forscore-mcp preview changes.json         # dry run (safe while forScore is open)
-forscore-mcp apply changes.json --yes     # back up, then apply (quit forScore first)
+forscore-mcp apply changes.json --yes     # create the import CSV and send it to forScore
+forscore-mcp verify <import id>           # after tapping Save in forScore: did it apply?
+forscore-mcp undo <import id> --yes       # a CSV that restores the previous values
 forscore-mcp sync-check                   # does the iPad get the same metadata?
 forscore-mcp backups                      # list backups
-forscore-mcp restore <id> --yes           # undo
 forscore-mcp key "E♭ major"               # key name ↔ forScore's code
 ```
 
@@ -131,18 +136,50 @@ unless you pass `"prune": false`. PDF file names are never changed; rename those
 |---|---|
 | `list_scores` (filters, paging), `get_score`, `list_values`, `list_setlists`, `audit_library`, `check_sync`, `convert_key`, `doctor`, `get_conventions` | no |
 | `preview_changeset`, `list_backups`, `create_backup` | no (backups only) |
-| `apply_changeset(changeset, confirm)`, `restore_backup(backup_id, confirm)` | yes, only with `confirm=true` |
+| `apply_changeset(changeset, confirm, method)`, `undo_import(import_id, confirm)` | creates an import for you to review in forScore; only with `confirm=true` |
+| `verify_import(import_id)` | no |
+| `apply_changeset(method="direct")`, `restore_backup` | danger zone only |
 
 Configuration via environment: `FORSCORE_LIBRARY` (library path) and `FORSCORE_BACKUP_DIR`
 (default `~/Library/Application Support/forscore-mcp/backups`).
 
 ## How it works
 
-forScore keeps its library in a Core Data SQLite store. This tool validates the store's layout
-on every open (and refuses to write to anything it does not recognise), edits the relevant rows,
-bumps each changed item's Core Data version and modification date, and updates the score's
-sync file. forScore syncs those files, not the database, to your other devices.
-`forscore-mcp sync-check` confirms that both agree. Details: [`docs/schema.md`](docs/schema.md).
+Reading: forScore keeps its library in a Core Data SQLite store. The tool opens it read-only,
+validates its layout every time, and refuses anything it does not recognise. Details:
+[`docs/schema.md`](docs/schema.md).
+
+Writing: changes are written as forScore's Metadata CSV. forScore matches rows to scores by
+file name, shows a per-field diff, and applies it on Save, including sync to your other
+devices. Some changes have no CSV column; the tool lists them under "not in CSV" so you can make
+them in forScore:
+- library membership
+- composer sort names
+- keys with more than 7 sharps or flats
+- values containing a comma
+
+## Danger zone: direct database writes
+
+> **Unsupported by forScore. Can cause crashes, unexpected behaviour or data loss.** forScore's
+> developers advise against it. It bypasses forScore's own validation and edits the
+> database and the per-score sync files directly.
+
+For changes the CSV import cannot make, the tool can also write directly. This is off unless
+you set this variable in the MCP server's environment (or your shell):
+
+```
+FORSCORE_DANGER_ZONE=i-understand-this-can-damage-my-library
+```
+
+Then `apply_changeset(..., method="direct")` or `forscore-mcp apply --direct --yes` works:
+- forScore must be quit on the Mac, and a backup is made first.
+- `restore` puts a backup back.
+- Values nothing uses any more are deleted, though forScore hides them anyway. On the Mac,
+  an empty changeset `{}` applied with `--direct` does just that cleanup. Each device keeps
+  its own list of values.
+- `doctor` shows when the danger zone is on.
+
+An assistant cannot turn it on by itself. Only that setting can.
 
 ## Development
 

@@ -105,8 +105,21 @@ forScore must not be running during writes; otherwise it may overwrite the chang
   `AddMetadataIntent`, `RemoveMetadataIntent`, `RenameScoreIntent`, …). This is a possible
   future backend that would not touch the database, but it needs user-built Shortcuts and is
   slow for bulk edits.
-- Backups panel: CSV metadata import/export. The columns are `Filename, Title, Start Page
-  (Bookmark), End Page (Bookmark), Composers, Genres, Tags, Labels, Reference, Rating,
-  Difficulty, Minutes, Seconds, keysf, keymi`, with lists comma-separated. It is a possible
-  officially supported write path.
+- **Backups › Metadata (CSV) › Import/Export: the write path this tool uses by default**
+  (`csvimport.py`). forScore recommends it. Columns: `Filename, Title, Start Page (Bookmark),
+  End Page (Bookmark), Composers, Genres, Tags, Labels, Reference, Rating, Difficulty, Minutes,
+  Seconds, keysf, keymi`; UTF-8, comma-separated, lists joined with ", ". Verified with
+  forScore 15.2:
+  - `open -a forScore file.csv` copies the file into forScore's Documents, and the Import list
+    shows CSVs from there.
+  - forScore previews only the cells that differ and applies them on Save, updating the
+    database and the sync files itself.
+  - Rows match scores by `Filename`; unknown files are ignored.
+  - An empty cell clears the field, and lists are replaced, not merged.
+  - Bookmark rows that match no bookmark are ignored. Whether existing bookmarks update is
+    not yet confirmed.
+  - Values that become unused are not deleted, but forScore hides them.
+- In October 2026 forScore's support confirmed that direct database or sync-file edits are risky
+  and that the CSV import is the supported way. Direct writes are kept only behind the danger
+  zone.
 - PDF metadata on import (Title, Author → composers, Subject → genres, Keywords → tags).

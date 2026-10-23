@@ -63,9 +63,16 @@ def _parser() -> argparse.ArgumentParser:
         "kind", type=MetaKind, choices=list(MetaKind)
     )
     command("preview", _preview, "dry-run a changeset file ('-' for stdin)").add_argument("file")
-    apply = command("apply", _apply, "apply a changeset file (backup first)")
+    apply = command("apply", _apply, "write a changeset as a forScore import CSV")
     apply.add_argument("file")
     apply.add_argument("--yes", action="store_true", help="actually write (default: preview)")
+    apply.add_argument(
+        "--direct", action="store_true", help="danger zone: write the database directly"
+    )
+    command("verify", _verify, "check that forScore applied an import").add_argument("import_id")
+    undo = command("undo", _undo, "create a CSV that reverts an import")
+    undo.add_argument("import_id")
+    undo.add_argument("--yes", action="store_true", help="confirm creating the undo import")
     command("setlists", _setlists, "list setlists and their items")
     command("audit", _audit, "find duplicates, file-name mismatches and sort-name issues")
     command("sync-check", _sync_check, "compare the library with what syncs to other devices")
@@ -145,10 +152,27 @@ def _preview(args: argparse.Namespace) -> tuple[Any, str]:
 def _apply(args: argparse.Namespace) -> tuple[Any, str]:
     library = Library()
     data = _read_json(args.file)
-    data, text = _report((library.apply(data) if args.yes else library.preview(data)).to_dict())
+    method = "direct" if args.direct else "csv"
+    report = library.apply(data, method=method) if args.yes else library.preview(data)
+    result, text = _report(report.to_dict())
     if not args.yes:
-        text += "\n\nPreview only. Quit forScore on the Mac, then re-run with --yes to apply."
-    return data, text
+        text += "\n\nPreview only. Re-run with --yes to create the import for forScore."
+    return result, text
+
+
+def _verify(args: argparse.Namespace) -> tuple[Any, str]:
+    result = Library().verify_import(args.import_id)
+    lines = [f"{result['status']} ({result['items']} items)"]
+    lines += [f"  {m['item']}: {m['field']} is {_fmt(m['actual'])}, expected {_fmt(m['expected'])}"
+              for m in result["mismatches"]]  # fmt: skip
+    return result, "\n".join(lines)
+
+
+def _undo(args: argparse.Namespace) -> tuple[Any, str]:
+    if not args.yes:
+        raise ValueError("Undo creates a new import for forScore; re-run with --yes to confirm.")
+    result = Library().undo_import(args.import_id)
+    return result, str(result["next_step"])
 
 
 def _sync_check(_: argparse.Namespace) -> tuple[Any, str]:
@@ -170,7 +194,7 @@ def _backups(_: argparse.Namespace) -> tuple[Any, str]:
     return [b.to_dict() for b in backups], "\n".join(b.id for b in backups) or "No backups."
 
 
-def _restore(args: argparse.Namespace) -> tuple[Any, str]:
+def _restore(args: argparse.Namespace) -> tuple[Any, str]:  # danger zone (checked in Library)
     if not args.yes:
         raise ValueError("Restoring overwrites the library; re-run with --yes to confirm.")
     previous = Library().restore(args.backup_id)
@@ -220,6 +244,12 @@ def _report(report: dict[str, Any]) -> tuple[Any, str]:
     if report["backup"]:
         lines.append(f"{report['sync_files_updated']} sync files updated")
         lines.append(f"Backup: {report['backup']}")
+    for name, reasons in report.get("skipped", {}).items():
+        lines.append(f"not in CSV: {name}: {'; '.join(reasons)}")
+    if report.get("warning"):
+        lines.append(f"\n⚠ {report['warning']}")
+    if report.get("next_step"):
+        lines.append(f"\n{report['next_step']}")
     return report, "\n".join(lines)
 
 

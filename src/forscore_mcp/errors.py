@@ -17,6 +17,10 @@ class AppRunningError(ForScoreError):
     """forScore is running, so writing to its library is unsafe."""
 
 
+class DangerZoneError(ForScoreError):
+    """A direct database write was requested without enabling the danger zone."""
+
+
 class ChangesetError(ForScoreError):
     """A changeset is malformed or refers to something that does not exist."""
 

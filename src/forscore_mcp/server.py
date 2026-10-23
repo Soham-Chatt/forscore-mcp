@@ -13,15 +13,15 @@ from mcp.types import ToolAnnotations
 from . import __version__, conventions, keys
 from .doctor import run_checks
 from .errors import ForScoreError
-from .library import Filters, Library
+from .library import Filters, Library, WriteMethod
 from .models import ItemKind, MetaKind
 
 INSTRUCTIONS = """\
 Tools to read and fix metadata (title, composer, reference, key, rating, difficulty, duration,
-genre, tags, labels, libraries) of scores and bookmarks in the user's forScore sheet-music
-library on macOS. Read `get_conventions` before proposing changes. Never apply a changeset the
-user has not approved; always preview first, and ask the user to quit forScore on the Mac
-before `apply_changeset`."""
+genre, tags, labels) of scores and bookmarks in the user's forScore sheet-music library on
+macOS. Read `get_conventions` before proposing changes. Never apply a changeset the user has not
+approved; always preview first. Changes are written as a CSV the user imports in forScore
+(Backups › Metadata › Import); afterwards call `verify_import`."""
 
 READ = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False)
@@ -80,10 +80,10 @@ def get_score(match: str) -> dict[str, Any]:
 
 
 @_tool(READ)
-def list_values(kind: MetaKind) -> list[dict[str, Any]]:
+def list_values(kind: MetaKind, include_unused: bool = False) -> list[dict[str, Any]]:
     """List every composer, genre, tag, label or library in use, with usage counts
-    (and sort names for composers)."""
-    return [v.to_dict() for v in Library().values(kind)]
+    (and sort names for composers). Unused values are hidden, as in forScore."""
+    return [v.to_dict() for v in Library().values(kind, include_unused=include_unused)]
 
 
 @_tool(READ)
@@ -112,12 +112,34 @@ def preview_changeset(changeset: dict[str, Any]) -> dict[str, Any]:
 
 
 @_tool(WRITE)
-def apply_changeset(changeset: dict[str, Any], confirm: bool = False) -> dict[str, Any]:
-    """Apply a changeset to the library and its sync files (backup first).
-    Requires forScore to be quit on the Mac. Without confirm=true this only previews."""
+def apply_changeset(
+    changeset: dict[str, Any], confirm: bool = False, method: WriteMethod = "csv"
+) -> dict[str, Any]:
+    """Write an approved changeset. Without confirm=true this only previews.
+    method "csv" (default, supported by forScore): creates an import CSV and sends it to
+    forScore; tell the user the `next_step` (import it in Backups › Metadata, check forScore's
+    preview, tap Save), then call `verify_import`. Changes CSV cannot carry are listed under
+    `skipped`. method "direct" writes the database itself; it only works if the user enabled
+    the danger zone, needs forScore quit, and should only be used for skipped changes such as
+    library membership or composer sort names."""
     library = Library()
-    report = library.apply(changeset) if confirm else library.preview(changeset)
+    report = library.apply(changeset, method=method) if confirm else library.preview(changeset)
     return report.to_dict()
+
+
+@_tool(READ)
+def verify_import(import_id: str) -> dict[str, Any]:
+    """After the user imported a CSV: check field by field that forScore applied it."""
+    return Library().verify_import(import_id)
+
+
+@_tool(WRITE)
+def undo_import(import_id: str, confirm: bool = False) -> dict[str, Any]:
+    """Create (and send to forScore) a CSV that restores the items of an earlier import.
+    The user imports it the same way. Requires confirm=true."""
+    if not confirm:
+        raise ToolError("Undo creates a new import for the user; call again with confirm=true.")
+    return Library().undo_import(import_id)
 
 
 @_tool(READ)
@@ -142,7 +164,7 @@ def create_backup() -> dict[str, str]:
 @_tool(WRITE)
 def restore_backup(backup_id: str, confirm: bool = False) -> dict[str, str]:
     """Replace the library with a backup (the current state is backed up first).
-    Requires forScore to be quit and confirm=true."""
+    Danger zone only; requires forScore to be quit and confirm=true. Prefer undo_import."""
     if not confirm:
         raise ToolError("Restoring overwrites the library; call again with confirm=true.")
     return {"restored": backup_id, "previous_state_backup": Library().restore(backup_id).id}
