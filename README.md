@@ -12,19 +12,21 @@ LLMs) or from the command line.
 > correctly or preserves existing data. Always check forScore's import preview before tapping
 > Save.
 
-## Why
+## Features
 
-My forScore library had grown messy: file-name titles like `Kabalevskij_op.39_24`, composers
-spelled three ways, missing opus numbers and keys. Fixing it by hand in the app was slow, so I
-had Claude do it. This project packages that into a repeatable, reviewable workflow that
-anyone can use:
-- The assistant reads the library and proposes changes.
-- You approve them.
-- forScore shows its own preview of every change before anything is saved.
-
-**Status:** early (0.x). It has been developed and tested against one real library on forScore
-15.2 for macOS, synced with an iPad. Feedback from other libraries is very welcome; see
-[Contributing](#contributing).
+- **Read**:
+  - every score and bookmark with its metadata (filtered and paged for large libraries)
+  - every composer, genre, tag, label and library in use
+  - setlists
+- **Bulk-edit** titles, composers, references, keys, genres, tags, labels, rating,
+  difficulty and duration, for scores and bookmarks.
+- **Rename or merge** a composer, genre or tag everywhere it is used.
+- **Audit** for likely duplicates, identical PDFs, file names that differ from titles, and
+  composer sort names worth checking.
+- **Check sync**: compare the library with what synced devices receive.
+- **Conventions guide** for AI assistants, so their edits stay consistent: full composer
+  names, `Op. 69 No. 2` references, genre as style period. See
+  [`conventions.md`](src/forscore_mcp/conventions.md).
 
 ## How it works
 
@@ -98,12 +100,9 @@ problem it finds.
 
 Ask the assistant things like *"Clean up the composers in my forScore library"* or *"Fill in
 the opus numbers for my Chopin scores"*. It follows the bundled
-[conventions guide](src/forscore_mcp/conventions.md) and proposes a table of changes. Once you
-approve them, it previews them and creates the import for forScore.
-
-The conventions are the ones I settled on: full composer names, `Op. 69 No. 2` style
-references, genre as style period, titles by the name each piece is best known by. Tell the
-assistant if you prefer something else.
+[conventions guide](src/forscore_mcp/conventions.md) unless told otherwise, and proposes a
+table of changes. Once you approve them, it previews them and creates the import for
+forScore.
 
 Command line:
 
@@ -202,22 +201,16 @@ An assistant cannot enable it through any tool call. Only that setting can.
 ## Limitations
 
 - macOS only.
-- Tested with forScore 15.2. A forScore update that changes the database layout makes the
-  tool refuse to run until it is updated.
+- Early (0.x), tested with forScore 15.2. A forScore update that changes the database layout
+  makes the tool refuse to run until it is updated.
 - Setlists are read-only.
 - It's not yet confirmed whether the CSV import can update existing bookmarks' metadata;
   `verify` will show it either way.
 
-## Roadmap
-
-- PDF renaming through the CSV import (forScore offered to look into this).
-- Editing setlists.
-- Possibly forScore's Shortcuts actions for small single edits.
-
 ## Contributing
 
-Issues and pull requests are welcome, especially reports from libraries that look different
-from mine: other forScore versions, iPhone-only sync, very large libraries.
+Issues and pull requests are welcome, including reports from other forScore versions and
+setups.
 
 Development:
 
@@ -231,11 +224,6 @@ uv run ruff check . && uv run ruff format . && uv run ty check
 documents what is known about forScore's storage; [`docs/releasing.md`](docs/releasing.md)
 covers releases.
 
-## Acknowledgements
+## License
 
-Thanks to forScore's support team for the advice to use the Metadata CSV import, and to
-[forscore-cli](https://github.com/danielhopkins/forscore-cli) for prior art on the database
-layout.
-
-Author: [@Soham-Chatt](https://github.com/Soham-Chatt). License: to be decided; until then,
-all rights reserved.
+To be decided; until then, all rights reserved.
