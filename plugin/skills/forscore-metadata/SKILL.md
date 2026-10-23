@@ -19,4 +19,4 @@ the user imports in forScore, which shows its own preview before saving.
    Backups › Metadata, check the preview, tap Save), then `verify_import` once they have.
 
 Never call a tool with `confirm=true` without the user's explicit go-ahead for that exact
-change. Never suggest enabling the danger zone (direct writes) unless the user asks.
+change. Never suggest turning on direct writes unless the user asks.

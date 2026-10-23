@@ -170,7 +170,7 @@ which is generated from the code.
 | `apply_changeset(changeset, confirm=true)`, `undo_import(import_id, confirm=true)` | creates an import CSV for review in forScore |
 | `verify_import(import_id)` | read only |
 | `create_backup`, `list_backups` | copies of the library database |
-| `apply_changeset(method="direct")`, `restore_backup` | danger zone only (below) |
+| `apply_changeset(method="direct")`, `restore_backup` | only with direct writes on (below) |
 
 Environment variables:
 - `FORSCORE_LIBRARY`: path to the library database.
@@ -178,28 +178,37 @@ Environment variables:
   `~/Library/Application Support/forscore-mcp`.
 - `FORSCORE_BACKUP_DIR`: where backups go.
 
-## Danger zone: direct database writes
+## Direct writes (unsupported by forScore)
 
-> **Unsupported by forScore. Can cause crashes, unexpected behaviour or data loss.**
-> forScore's developers advise against it. It bypasses forScore's own validation and writes
-> the database and the per-score sync files directly.
+> **Can cause crashes, unexpected behaviour or data loss.** forScore's developers advise against
+> it. It bypasses forScore's own validation and edits the database and the per-score sync files
+> directly.
 
-For the few changes the CSV import cannot make, the tool can write directly. It is off unless
-this exact value is set in the MCP server's environment or the shell:
+For the few changes the CSV import cannot make (library membership, composer sort names), the
+tool can write the database directly. This is off by default. Turn it on with a confirmation
+phrase:
 
 ```
-FORSCORE_DANGER_ZONE=i-understand-this-can-damage-my-library
+forscore-mcp direct-writes enable i-understand-this-can-damage-my-library
+forscore-mcp direct-writes status
+forscore-mcp direct-writes disable
 ```
 
-What changes when it is on:
-- `apply_changeset(..., method="direct")` and `forscore-mcp apply --direct --yes` write directly.
-- forScore must be quit on the Mac during writes.
-- A backup is made before every write, and `restore` puts one back.
+The setting is stored in `~/Library/Application Support/forscore-mcp/config.json` and takes
+effect immediately, including for a running MCP server. Instead, the variable
+`FORSCORE_DIRECT_WRITES=i-understand-this-can-damage-my-library` can be set in an MCP client's
+`env` configuration.
+
+While it is on:
+- A write is only direct when asked for: `apply_changeset(..., method="direct")` or
+  `forscore-mcp apply --direct --yes`. Everything else still goes through the CSV import.
+- forScore must be quit on the Mac during direct writes, and a backup is made first.
+- `restore` puts a backup back.
 - Values nothing uses any more are deleted. forScore hides them anyway, and each device keeps
   its own list.
-- `doctor` shows that the danger zone is on.
+- `doctor` shows that direct writes are on.
 
-An assistant cannot enable it through any tool call. Only that setting can.
+No MCP tool can turn direct writes on.
 
 ## Limitations
 
