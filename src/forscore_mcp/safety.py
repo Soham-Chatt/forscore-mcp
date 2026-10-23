@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -10,8 +11,15 @@ from datetime import datetime
 from pathlib import Path
 
 from . import syncfiles
-from .errors import AppRunningError, NotFoundError
+from .errors import AppRunningError, DangerZoneError, NotFoundError
 
+DANGER_ENV = "FORSCORE_DANGER_ZONE"
+DANGER_VALUE = "i-understand-this-can-damage-my-library"
+DANGER_WARNING = (
+    "Danger zone: this wrote directly to forScore's database and sync files, which forScore "
+    "does not support. Values are not checked by forScore and may cause crashes, unexpected "
+    "behaviour or data loss. A backup was made first."
+)
 BACKUP_NAME = "library.4sl"
 SYNC_BACKUP = "Sync"
 
@@ -21,6 +29,19 @@ def forscore_running() -> bool:
     if shutil.which("pgrep") is None:
         return False
     return subprocess.run(["pgrep", "-x", "forScore"], capture_output=True).returncode == 0
+
+
+def danger_zone_enabled() -> bool:
+    return os.environ.get(DANGER_ENV) == DANGER_VALUE
+
+
+def require_danger_zone() -> None:
+    if not danger_zone_enabled():
+        raise DangerZoneError(
+            "Direct writes are disabled. The supported way is the CSV import (the default). "
+            f"Only if you accept the risk of corrupting your library, set {DANGER_ENV}="
+            f"{DANGER_VALUE} in your MCP or shell configuration. See the README's danger zone."
+        )
 
 
 def require_quit() -> None:

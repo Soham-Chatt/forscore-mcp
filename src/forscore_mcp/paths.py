@@ -7,7 +7,8 @@ DEFAULT_LIBRARY = (
     Path.home()
     / "Library/Containers/com.mgsdevelopment.forscore/Data/Library/Preferences/library.4sl"
 )
-DEFAULT_BACKUP_DIR = Path.home() / "Library/Application Support/forscore-mcp/backups"
+DEFAULT_STATE_DIR = Path.home() / "Library/Application Support/forscore-mcp"
+DEFAULT_BACKUP_DIR = DEFAULT_STATE_DIR / "backups"
 
 
 def library_path() -> Path:
@@ -16,6 +17,12 @@ def library_path() -> Path:
 
 def backup_dir() -> Path:
     return Path(os.environ.get("FORSCORE_BACKUP_DIR", DEFAULT_BACKUP_DIR)).expanduser()
+
+
+def imports_dir() -> Path:
+    """Where generated import CSVs and their expected results are kept."""
+    state = Path(os.environ.get("FORSCORE_STATE_DIR", DEFAULT_STATE_DIR)).expanduser()
+    return state / "imports"
 
 
 def documents_dir(library: Path) -> Path:

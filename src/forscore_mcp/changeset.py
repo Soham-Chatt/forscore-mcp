@@ -60,6 +60,8 @@ class Report:
     backup: str | None = None
     sync_files_updated: int = 0
     updated: list[Item] = field(default_factory=list, repr=False)  # after-state, not serialised
+    previous: list[Item] = field(default_factory=list, repr=False)  # before-state of the same
+    extra: dict[str, Any] = field(default_factory=dict)  # write-method details (CSV import...)
 
     @property
     def empty(self) -> bool:
@@ -75,6 +77,7 @@ class Report:
             "pruned": self.pruned,
             "backup": self.backup,
             "sync_files_updated": self.sync_files_updated,
+            **self.extra,
         }
 
 
@@ -144,6 +147,7 @@ def run(store: Store, changeset: Changeset, *, dry_run: bool) -> Report:
         report.changes[after[pk].name] = _diff(before[pk], after[pk])
     store.touch(changed)
     report.updated = [after[pk] for pk in changed]
+    report.previous = [before[pk] for pk in changed]
     return report
 
 

@@ -60,6 +60,12 @@ class Item:
     def get(self, name: str) -> Any:
         return getattr(self, name)
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Item:
+        fields: dict[str, Any] = {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
+        fields["kind"] = ItemKind(fields.get("kind", ItemKind.SCORE))
+        return cls(**fields)
+
     def to_dict(self, *, compact: bool = False) -> dict[str, Any]:
         data = {"name": self.name, **asdict(self)}
         if compact:  # drop empty fields and the redundant ones: much smaller for LLM context
