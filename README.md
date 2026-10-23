@@ -1,67 +1,75 @@
 # forscore-mcp
 
-Read and clean up the metadata in your [forScore](https://forscore.co) sheet-music library:
-titles, composers, catalogue references (Op., BWV, K., …), keys, genres and tags. You can use
-it through an AI assistant (MCP server and skill for Claude and other LLMs) or from the
-command line.
+Clean up the metadata in a [forScore](https://forscore.co) sheet-music library in bulk:
+titles, composers, catalogue references (Op., BWV, K., …), keys, genres, tags, ratings and more.
+It works through an AI assistant (an MCP server and a Claude Code plugin; Claude and other
+LLMs) or from the command line.
 
 > **Not affiliated with or endorsed by forScore LLC.** forScore is a trademark of forScore LLC.
-> The tool reads forScore's internal library database (not a public API) and writes changes
-> through forScore's own Metadata CSV import, as forScore recommends. Data is still injected
-> into forScore as-is and cannot be guaranteed to work correctly or preserve existing data:
-> always check forScore's import preview before tapping Save.
+> The tool reads forScore's internal library database, which is not a public API, and writes
+> changes through forScore's own Metadata CSV import, as forScore's support recommends. Data
+> is still injected into forScore as-is, and the tool cannot guarantee that it works
+> correctly or preserves existing data. Always check forScore's import preview before tapping
+> Save.
 
-## What it does
+## Why
 
-- **Reads** every score and bookmark with its metadata (filtered and paged for big libraries),
-  every composer, genre, tag, label and library in use, and your setlists.
-- **Changes** metadata in bulk through a *changeset*: a small JSON file describing renames and
-  per-score edits. Changesets are always previewed first and applied in a single transaction.
-- **Writes the supported way:** changes become a CSV for forScore's Metadata import. The tool
-  hands it to forScore. You open Backups › Metadata (CSV) › Import, tap the file, check
-  forScore's own preview of every change and tap Save. forScore then handles the database and
-  sync, and the tool verifies the result afterwards. Each import can be undone with another
-  CSV.
-- **Audits** the library for likely duplicates, identical PDFs, file names that differ from
-  titles, and composer sort names worth checking.
-- **Ships a conventions guide** (full composer names, `Op. 69 No. 2` references, genre = style
-  period, …) so AI assistants make consistent choices. See
-  [`conventions.md`](src/forscore_mcp/conventions.md).
+My forScore library had grown messy: file-name titles like `Kabalevskij_op.39_24`, composers
+spelled three ways, missing opus numbers and keys. Fixing it by hand in the app was slow, so I
+had Claude do it. This project packages that into a repeatable, reviewable workflow that
+anyone can use:
+- The assistant reads the library and proposes changes.
+- You approve them.
+- forScore shows its own preview of every change before anything is saved.
+
+**Status:** early (0.x). It has been developed and tested against one real library on forScore
+15.2 for macOS, synced with an iPad. Feedback from other libraries is very welcome; see
+[Contributing](#contributing).
+
+## How it works
+
+1. **Read:** the tool opens forScore's library database on the Mac read-only and checks its
+   layout every time. It refuses to work with anything it does not recognise.
+2. **Propose:** the assistant (or you) writes a *changeset*, a small JSON description of the
+   changes. It is previewed as a per-score diff, and nothing is written yet.
+3. **Import:** the changeset becomes a CSV in forScore's own Metadata format, and the tool
+   hands it to forScore. In forScore, open **Backups › Metadata (CSV) › Import**, tap the file,
+   check forScore's preview and tap **Save**. forScore applies it and syncs it to your other
+   devices.
+4. **Verify or undo:** the tool checks field by field that the import applied. Any import can
+   be reverted with a second, generated CSV.
+
+forScore can stay open throughout.
 
 ## Requirements
 
-- A Mac with forScore installed (the library database only exists on the Mac).
+- A Mac with forScore. The library database only exists on the Mac; iPad-only setups are not
+  supported.
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (`brew install uv`).
-- **Full Disk Access** for the app that runs the tool (Terminal, Claude, Cursor, …): System
-  Settings › Privacy & Security › Full Disk Access. forScore's data sits in a protected app
-  container.
+- **Full Disk Access** for the app that runs the tool (Terminal, Claude, Cursor, …), because
+  forScore's data sits in a protected app container: System Settings › Privacy & Security ›
+  Full Disk Access.
 
 ## Install
 
 ### Claude Code (plugin: MCP server + skill)
 
-In a Claude Code session:
-
 ```
 /plugin install forscore --marketplace Soham-Chatt/forscore-mcp
 ```
 
-Or from your shell: `claude plugin install forscore --marketplace Soham-Chatt/forscore-mcp`.
+Or from a shell: `claude plugin install forscore --marketplace Soham-Chatt/forscore-mcp`.
 On older Claude Code versions, run `/plugin marketplace add Soham-Chatt/forscore-mcp` and then
 `/plugin install forscore@forscore-mcp`.
 
-- **Updates:** run `claude plugin update forscore@forscore-mcp`, or turn on auto-update under
-  **Marketplaces** in `/plugin`.
-- **While the repository is private**, Claude Code clones it with your own git credentials and
-  can't prompt for them. Run `gh auth login` and `gh auth setup-git` once. If you have no GitHub
-  SSH key, also set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`.
-- **Supported apps:** the plugin works in Claude Code. On claude.ai and in Cowork it can't reach
-  your Mac's library, so use Claude Code or Claude Desktop there.
+Update with `claude plugin update forscore@forscore-mcp`, or turn on auto-update under
+**Marketplaces** in `/plugin`. The plugin needs Claude Code, or Claude Desktop through the
+MCP configuration below. claude.ai on the web and Cowork cannot reach a Mac's local library.
 
-### Any other MCP client (Claude Desktop, Cursor, VS Code, Codex, Gemini CLI, …)
+### Other MCP clients (Claude Desktop, Cursor, VS Code, Codex, Gemini CLI, …)
 
-Add this server to the client's MCP configuration (for Claude Desktop:
-`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Add the server to the client's MCP configuration. For Claude Desktop that is
+`~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -74,8 +82,7 @@ Add this server to the client's MCP configuration (for Claude Desktop:
 }
 ```
 
-For agents without MCP support, point them at the CLI with `--json` and at
-[`AGENTS.md`](AGENTS.md).
+Agents without MCP support can use the CLI with `--json`; see [`AGENTS.md`](AGENTS.md).
 
 ### Command line
 
@@ -84,110 +91,151 @@ uv tool install git+https://github.com/Soham-Chatt/forscore-mcp
 forscore-mcp doctor
 ```
 
+`doctor` checks library access, sync state and the write mode, and explains how to fix any
+problem it finds.
+
 ## Usage
 
-Ask your assistant things like *"Clean up the composers in my forScore library"* or *"Fill in
-the opus numbers for my Chopin scores"*. It reads the library, proposes a table of changes for
-you to approve, previews them, asks you to quit forScore, and then applies them.
+Ask the assistant things like *"Clean up the composers in my forScore library"* or *"Fill in
+the opus numbers for my Chopin scores"*. It follows the bundled
+[conventions guide](src/forscore_mcp/conventions.md) and proposes a table of changes. Once you
+approve them, it previews them and creates the import for forScore.
 
-From the command line:
+The conventions are the ones I settled on: full composer names, `Op. 69 No. 2` style
+references, genre as style period, titles by the name each piece is best known by. Tell the
+assistant if you prefer something else.
+
+Command line:
 
 ```
-forscore-mcp doctor                       # check access; tells you how to fix problems
 forscore-mcp list chopin                  # search scores and bookmarks
-forscore-mcp list --missing composers     # filters: --composer/--genre/--tag/--library/--kind
+forscore-mcp list --missing composers     # filters: --composer --genre --tag --library --kind
 forscore-mcp show "Kinderszenen > Träumerei"   # one score or bookmark
+forscore-mcp values composers             # values in use, with counts and sort names
 forscore-mcp setlists                     # setlists and their items
-forscore-mcp audit                        # duplicates, file names, sort names
-forscore-mcp values composers             # all composers, with usage counts
-forscore-mcp preview changes.json         # dry run (safe while forScore is open)
-forscore-mcp apply changes.json --yes     # create the import CSV and send it to forScore
-forscore-mcp verify <import id>           # after tapping Save in forScore: did it apply?
+forscore-mcp audit                        # likely duplicates, file names, sort names
+forscore-mcp preview changes.json         # dry run of a changeset
+forscore-mcp apply changes.json --yes     # create the import CSV and hand it to forScore
+forscore-mcp verify <import id>           # after Save in forScore: did everything apply?
 forscore-mcp undo <import id> --yes       # a CSV that restores the previous values
-forscore-mcp sync-check                   # does the iPad get the same metadata?
-forscore-mcp backups                      # list backups
-forscore-mcp key "E♭ major"               # key name ↔ forScore's code
+forscore-mcp sync-check                   # do synced devices get the same metadata?
+forscore-mcp key "E♭ major"               # key name ↔ forScore's internal code
 ```
 
-Add `--json` to any command for machine-readable output. A changeset looks like
-[`examples/changeset.example.json`](examples/changeset.example.json):
+Add `--json` to any command for machine-readable output.
+
+### Changesets
+
+See [`examples/changeset.example.json`](examples/changeset.example.json):
 
 ```json
 {
   "renames": { "composers": { "Chopin": "Frédéric Chopin" } },
-  "scores": [
+  "items": [
     { "match": "Fur Elise",
       "set": { "title": "Für Elise", "reference": "WoO 59", "key": "A minor", "genres": ["Classical"] },
-      "add": { "tags": ["ABRSM Grade 5"] } }
+      "add": { "tags": ["ABRSM Grade 5"] } },
+    { "match": "Kinderszenen › Träumerei", "set": { "reference": "Op. 15 No. 7" } }
   ]
 }
 ```
 
-`match` is a UUID, an exact title, or `"Score › Bookmark"` (`>` works too). `set` replaces
-fields: `title`, `reference`, `key`, `rating` (0–5), `difficulty` (0–3), `duration` (`"m:ss"`),
-`composers`, `genres`, `tags`, `labels` and `libraries` (libraries must already exist).
-`add` and `remove` edit list fields. `sort_names` sets how composers are filed, e.g.
-`{"Ralph Vaughan Williams": "Vaughan Williams"}`. Values nothing uses any more are removed
-unless you pass `"prune": false`. PDF file names are never changed; rename those in forScore.
+- `match`: a UUID, an exact title, or `"Score › Bookmark"` (`>` works too).
+- `set` replaces these fields: `title`, `reference`, `key`, `rating` (0–5), `difficulty`
+  (0–3), `duration` (`"m:ss"`), `composers`, `genres`, `tags` and `labels`.
+- `add` and `remove` edit the list fields.
+- `renames` renames a value everywhere it is used.
+
+### What the CSV import cannot do
+
+forScore's CSV format has no columns for these, so the tool lists them under "not in CSV"
+instead of importing them:
+- library membership
+- composer sort names (`sort_names`)
+- keys with more than 7 sharps or flats
+- values containing a comma
+- changing PDF file names
+
+Make these changes in forScore itself. Changing a title in forScore can rename the PDF to
+match.
 
 ### MCP tools
 
-| Tool | Writes? |
+| Tool | Effect |
 |---|---|
-| `list_scores` (filters, paging), `get_score`, `list_values`, `list_setlists`, `audit_library`, `check_sync`, `convert_key`, `doctor`, `get_conventions` | no |
-| `preview_changeset`, `list_backups`, `create_backup` | no (backups only) |
-| `apply_changeset(changeset, confirm, method)`, `undo_import(import_id, confirm)` | creates an import for you to review in forScore; only with `confirm=true` |
-| `verify_import(import_id)` | no |
-| `apply_changeset(method="direct")`, `restore_backup` | danger zone only |
+| `list_scores` (filters, paging), `get_score`, `list_values`, `list_setlists`, `audit_library`, `check_sync`, `convert_key`, `doctor`, `get_conventions` | read only |
+| `preview_changeset` | read only (dry run) |
+| `apply_changeset(changeset, confirm=true)`, `undo_import(import_id, confirm=true)` | creates an import CSV for review in forScore |
+| `verify_import(import_id)` | read only |
+| `create_backup`, `list_backups` | copies of the library database |
+| `apply_changeset(method="direct")`, `restore_backup` | danger zone only (below) |
 
-Configuration via environment: `FORSCORE_LIBRARY` (library path) and `FORSCORE_BACKUP_DIR`
-(default `~/Library/Application Support/forscore-mcp/backups`).
-
-## How it works
-
-Reading: forScore keeps its library in a Core Data SQLite store. The tool opens it read-only,
-validates its layout every time, and refuses anything it does not recognise. Details:
-[`docs/schema.md`](docs/schema.md).
-
-Writing: changes are written as forScore's Metadata CSV. forScore matches rows to scores by
-file name, shows a per-field diff, and applies it on Save, including sync to your other
-devices. Some changes have no CSV column; the tool lists them under "not in CSV" so you can make
-them in forScore:
-- library membership
-- composer sort names
-- keys with more than 7 sharps or flats
-- values containing a comma
+Environment variables:
+- `FORSCORE_LIBRARY`: path to the library database.
+- `FORSCORE_STATE_DIR`: where import CSVs are kept. The default is
+  `~/Library/Application Support/forscore-mcp`.
+- `FORSCORE_BACKUP_DIR`: where backups go.
 
 ## Danger zone: direct database writes
 
-> **Unsupported by forScore. Can cause crashes, unexpected behaviour or data loss.** forScore's
-> developers advise against it. It bypasses forScore's own validation and edits the
-> database and the per-score sync files directly.
+> **Unsupported by forScore. Can cause crashes, unexpected behaviour or data loss.**
+> forScore's developers advise against it. It bypasses forScore's own validation and writes
+> the database and the per-score sync files directly.
 
-For changes the CSV import cannot make, the tool can also write directly. This is off unless
-you set this variable in the MCP server's environment (or your shell):
+For the few changes the CSV import cannot make, the tool can write directly. It is off unless
+this exact value is set in the MCP server's environment or the shell:
 
 ```
 FORSCORE_DANGER_ZONE=i-understand-this-can-damage-my-library
 ```
 
-Then `apply_changeset(..., method="direct")` or `forscore-mcp apply --direct --yes` works:
-- forScore must be quit on the Mac, and a backup is made first.
-- `restore` puts a backup back.
-- Values nothing uses any more are deleted, though forScore hides them anyway. On the Mac,
-  an empty changeset `{}` applied with `--direct` does just that cleanup. Each device keeps
-  its own list of values.
-- `doctor` shows when the danger zone is on.
+What changes when it is on:
+- `apply_changeset(..., method="direct")` and `forscore-mcp apply --direct --yes` write directly.
+- forScore must be quit on the Mac during writes.
+- A backup is made before every write, and `restore` puts one back.
+- Values nothing uses any more are deleted. forScore hides them anyway, and each device keeps
+  its own list.
+- `doctor` shows that the danger zone is on.
 
-An assistant cannot turn it on by itself. Only that setting can.
+An assistant cannot enable it through any tool call. Only that setting can.
 
-## Development
+## Limitations
+
+- macOS only.
+- Tested with forScore 15.2. A forScore update that changes the database layout makes the
+  tool refuse to run until it is updated.
+- Setlists are read-only.
+- It's not yet confirmed whether the CSV import can update existing bookmarks' metadata;
+  `verify` will show it either way.
+
+## Roadmap
+
+- PDF renaming through the CSV import (forScore offered to look into this).
+- Editing setlists.
+- Possibly forScore's Shortcuts actions for small single edits.
+
+## Contributing
+
+Issues and pull requests are welcome, especially reports from libraries that look different
+from mine: other forScore versions, iPhone-only sync, very large libraries.
+
+Development:
 
 ```
 uv sync
-uv run pytest            # tests run against a synthetic library, never your real one
+uv run pytest            # tests use a synthetic library, never a real one
 uv run ruff check . && uv run ruff format . && uv run ty check
 ```
 
-See [`AGENTS.md`](AGENTS.md) for the architecture and contribution rules, and
-[`docs/releasing.md`](docs/releasing.md) for releases.
+[`AGENTS.md`](AGENTS.md) describes the architecture and rules; [`docs/schema.md`](docs/schema.md)
+documents what is known about forScore's storage; [`docs/releasing.md`](docs/releasing.md)
+covers releases.
+
+## Acknowledgements
+
+Thanks to forScore's support team for the advice to use the Metadata CSV import, and to
+[forscore-cli](https://github.com/danielhopkins/forscore-cli) for prior art on the database
+layout.
+
+Author: [@Soham-Chatt](https://github.com/Soham-Chatt). License: to be decided; until then,
+all rights reserved.
