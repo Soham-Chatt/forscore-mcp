@@ -174,6 +174,9 @@ FORSCORE_DANGER_ZONE=i-understand-this-can-damage-my-library
 Then `apply_changeset(..., method="direct")` or `forscore-mcp apply --direct --yes` works:
 - forScore must be quit on the Mac, and a backup is made first.
 - `restore` puts a backup back.
+- Values nothing uses any more are deleted, though forScore hides them anyway. On the Mac,
+  an empty changeset `{}` applied with `--direct` does just that cleanup. Each device keeps
+  its own list of values.
 - `doctor` shows when the danger zone is on.
 
 An assistant cannot turn it on by itself. Only that setting can.

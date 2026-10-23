@@ -48,6 +48,7 @@ def test_apply_writes_csv_and_leaves_library_alone(
         "37",
     )
     assert safe_library.item("UUID-ELISE").title == "Fur Elise"
+    assert report["pruned"] == {}  # CSV cannot delete values
 
 
 def test_bookmark_row(safe_library: Library) -> None:

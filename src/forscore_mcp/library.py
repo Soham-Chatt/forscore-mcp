@@ -130,6 +130,7 @@ class Library:
             report.extra = {"method": "direct", "warning": safety.DANGER_WARNING}
             return report
         report = self.preview(data)
+        report.pruned = {}  # the CSV import cannot delete values; forScore hides unused ones
         skipped: dict[str, list[str]] = {}
         before, expected = [], []
         for old, new in zip(report.previous, report.updated, strict=True):
