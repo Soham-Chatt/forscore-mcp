@@ -8,7 +8,7 @@
 
 *writes (needs `confirm=true`)*
 
-Write an approved changeset. Without confirm=true this only previews. method "csv" (default, supported by forScore): creates an import CSV and sends it to forScore; tell the user the `next_step` (import it in Backups › Metadata, check forScore's preview, tap Save), then call `verify_import`. Changes CSV cannot carry are listed under `skipped`. method "direct" writes the database itself; it only works if the user enabled the danger zone, needs forScore quit, and should only be used for skipped changes such as library membership or composer sort names.
+Write an approved changeset. Without confirm=true this only previews. method "csv" (default, supported by forScore): creates an import CSV and sends it to forScore; tell the user the `next_step` (import it in Backups › Metadata, check forScore's preview, tap Save), then call `verify_import`. Changes CSV cannot carry are listed under `skipped`. method "direct" writes the database itself (unsupported by forScore); it only works if the user turned on direct writes themselves, needs forScore quit, and should only be used for skipped changes such as library membership or composer sort names.
 
 | Parameter | Type | Default |
 |---|---|---|
@@ -123,7 +123,7 @@ Dry-run a changeset on a copy of the library and return the per-item diff. Forma
 
 *writes (needs `confirm=true`)*
 
-Replace the library with a backup (the current state is backed up first). Danger zone only; requires forScore to be quit and confirm=true. Prefer undo_import.
+Replace the library with a backup (the current state is backed up first). Only with direct writes on; requires forScore to be quit and confirm=true. Prefer undo_import.
 
 | Parameter | Type | Default |
 |---|---|---|
@@ -196,7 +196,7 @@ dry-run a changeset file ('-' for stdin)
 write a changeset as a forScore import CSV
 
 - `--yes`: actually write (default: preview)
-- `--direct`: danger zone: write the database directly
+- `--direct`: write the database directly (needs direct writes on)
 
 ### `forscore-mcp verify <import_id>`
 
@@ -233,6 +233,12 @@ list backups
 restore a backup
 
 - `--yes`: confirm overwriting the library
+
+### `forscore-mcp direct-writes <action> [<phrase>]`
+
+turn unsupported direct database writes on or off
+
+- `<phrase>`: required to enable; run without it to see it
 
 ### `forscore-mcp key <value>`
 

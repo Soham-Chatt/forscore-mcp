@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sqlite3
@@ -10,15 +11,20 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from . import syncfiles
-from .errors import AppRunningError, DangerZoneError, NotFoundError
+from . import paths, syncfiles
+from .errors import AppRunningError, DirectWritesDisabledError, NotFoundError
 
-DANGER_ENV = "FORSCORE_DANGER_ZONE"
-DANGER_VALUE = "i-understand-this-can-damage-my-library"
-DANGER_WARNING = (
-    "Danger zone: this wrote directly to forScore's database and sync files, which forScore "
-    "does not support. Values are not checked by forScore and may cause crashes, unexpected "
-    "behaviour or data loss. A backup was made first."
+DIRECT_WRITES_ENV = "FORSCORE_DIRECT_WRITES"
+DIRECT_WRITES_PHRASE = "i-understand-this-can-damage-my-library"
+ENABLE_COMMAND = f"forscore-mcp direct-writes enable {DIRECT_WRITES_PHRASE}"
+DIRECT_WRITES_RISK = (
+    "Direct writes edit forScore's database and sync files themselves, which forScore does not "
+    "support: values are not checked by forScore and can cause crashes, unexpected behaviour or "
+    "data loss. The supported way is the CSV import (the default)."
+)
+DIRECT_WRITE_WARNING = (
+    "Direct write: forScore's database and sync files were edited directly (unsupported by "
+    "forScore). A backup was made first."
 )
 BACKUP_NAME = "library.4sl"
 SYNC_BACKUP = "Sync"
@@ -31,17 +37,34 @@ def forscore_running() -> bool:
     return subprocess.run(["pgrep", "-x", "forScore"], capture_output=True).returncode == 0
 
 
-def danger_zone_enabled() -> bool:
-    return os.environ.get(DANGER_ENV) == DANGER_VALUE
+def direct_writes_enabled() -> bool:
+    """On if enabled with `forscore-mcp direct-writes enable` or via the environment variable."""
+    if os.environ.get(DIRECT_WRITES_ENV) == DIRECT_WRITES_PHRASE:
+        return True
+    return bool(_read_config().get("direct_writes"))
 
 
-def require_danger_zone() -> None:
-    if not danger_zone_enabled():
-        raise DangerZoneError(
-            "Direct writes are disabled. The supported way is the CSV import (the default). "
-            f"Only if you accept the risk of corrupting your library, set {DANGER_ENV}="
-            f"{DANGER_VALUE} in your MCP or shell configuration. See the README's danger zone."
+def set_direct_writes(enabled: bool) -> None:
+    config = _read_config() | {"direct_writes": enabled}
+    path = paths.config_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(config, indent=2) + "\n")
+
+
+def require_direct_writes() -> None:
+    if not direct_writes_enabled():
+        raise DirectWritesDisabledError(
+            f"Direct writes are off. {DIRECT_WRITES_RISK} To accept that risk, the user can run "
+            f"`{ENABLE_COMMAND}` (and `forscore-mcp direct-writes disable` to turn it off)."
         )
+
+
+def _read_config() -> dict[str, object]:
+    try:
+        data = json.loads(paths.config_file().read_text())
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def require_quit() -> None:

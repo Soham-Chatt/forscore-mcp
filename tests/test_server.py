@@ -33,7 +33,7 @@ def test_apply_requires_confirm() -> None:
     assert report["method"] == "csv"
     assert call("verify_import", import_id=report["import_id"])["status"] == "not imported yet"
     direct = call("apply_changeset", changeset=changes, confirm=True, method="direct")
-    assert direct["dry_run"] is False  # this module's fixture enables the danger zone
+    assert direct["dry_run"] is False  # this module's fixture turns direct writes on
     assert call("get_score", match="Wet Hands")["key"] == "A minor"
     assert call("verify_import", import_id=report["import_id"])["status"] == "imported"
 

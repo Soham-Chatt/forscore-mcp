@@ -122,12 +122,12 @@ class Library:
 
         ``csv`` (default, supported by forScore): writes an import CSV and hands it to forScore;
         the user reviews forScore's preview and taps Save; then call ``verify_import``.
-        ``direct``: writes the database and sync files; only with the danger zone enabled.
+        ``direct``: writes the database and sync files; only when direct writes are on.
         """
         if method == "direct":
-            safety.require_danger_zone()
+            safety.require_direct_writes()
             report = self._apply_direct(data)
-            report.extra = {"method": "direct", "warning": safety.DANGER_WARNING}
+            report.extra = {"method": "direct", "warning": safety.DIRECT_WRITE_WARNING}
             return report
         report = self.preview(data)
         report.pruned = {}  # the CSV import cannot delete values; forScore hides unused ones
@@ -229,8 +229,11 @@ class Library:
         return safety.list_backups(self.backup_dir)
 
     def restore(self, backup_id: str) -> safety.Backup:
-        """Replace the library with a backup, after backing up the current state (danger zone)."""
-        safety.require_danger_zone()
+        """Replace the library with a backup, backing up the current state first.
+
+        Direct writes only.
+        """
+        safety.require_direct_writes()
         source = safety.find_backup(self.backup_dir, backup_id)
         with self._writable() as conn:
             current = safety.create_backup(conn, self.backup_dir, self.sync_dir)

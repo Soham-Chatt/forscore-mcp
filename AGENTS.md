@@ -9,7 +9,7 @@ Run `forscore-mcp conventions` and follow it. Read with `forscore-mcp list --jso
 `forscore-mcp values <kind> --json`; write a changeset file, run `forscore-mcp preview <file>`, get the user's approval, then
 `forscore-mcp apply <file> --yes`. It creates an import CSV; the user imports it in forScore
 (Backups › Metadata › Import); then `forscore-mcp verify <import id>`. Never pass `--yes`
-without explicit user approval, and never enable the danger zone yourself.
+without explicit user approval, and never turn on direct writes yourself.
 
 ## Architecture
 
@@ -44,7 +44,8 @@ exposed by both the CLI and the MCP server.
   `tests/fixtures/schema.sql`. Never commit a real library, backups or personal changesets
   (`local/` is gitignored for those).
 - The default write path is the CSV import (`Library.apply`, method "csv"). Direct writes
-  (method "direct") must stay behind `safety.require_danger_zone()`.
+  (method "direct") must stay behind `safety.require_direct_writes()`; only the user turns
+  them on (`forscore-mcp direct-writes enable <phrase>`), never an MCP tool.
 - Every direct write path goes through `Library`, which must keep: refusing to write while forScore runs
   (`safety.require_quit`), a backup before writing, one transaction, integrity checks,
   `Store.touch` on changed items, and updating their sync files (`syncfiles.update`). Other

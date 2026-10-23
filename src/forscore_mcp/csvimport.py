@@ -32,7 +32,7 @@ HEADER = [
     "Filename", "Title", "Start Page (Bookmark)", "End Page (Bookmark)", "Composers", "Genres",
     "Tags", "Labels", "Reference", "Rating", "Difficulty", "Minutes", "Seconds", "keysf", "keymi",
 ]  # fmt: skip
-# Item fields a CSV row carries; anything else (libraries, sort names) needs the danger zone.
+# Item fields a CSV row carries; anything else (libraries, sort names) needs direct writes.
 CSV_FIELDS = ("title", "composers", "genres", "tags", "labels", "reference", "rating",
               "difficulty", "duration", "key")  # fmt: skip
 _LISTS = {"Composers": "composers", "Genres": "genres", "Tags": "tags", "Labels": "labels"}

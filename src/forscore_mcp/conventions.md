@@ -38,6 +38,6 @@ is already consistent.
 6. When the user says they saved, call `verify_import` and report the result. If something is
    wrong, `undo_import` creates a CSV that restores the previous values.
 7. Skipped changes (library membership, composer sort names): ask the user to make them in
-   forScore. Only if the user has enabled the danger zone themselves, and agrees, use
+   forScore. Only if the user has turned on direct writes themselves, and agrees, use
    `apply_changeset(method="direct")`. It needs forScore quit on the Mac, and it is not
    supported by forScore.

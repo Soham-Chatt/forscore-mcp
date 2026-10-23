@@ -88,7 +88,7 @@ In practice, after database-only edits a synced iPad kept showing the old values
 score whose sync file forScore had not rewritten itself. Bumping `Z_OPT` and `ZMODIFIED` is
 *not* enough.
 
-Direct writes (danger zone) therefore update each changed score's sync file in the same step, and bump
+Direct writes therefore update each changed score's sync file in the same step, and bump
 `Z_OPT`/`ZMODIFIED` so the database stays consistent. `forscore-mcp sync-check` (and the
 `doctor` check) compares the two.
 
@@ -121,6 +121,5 @@ forScore must not be running during writes; otherwise it may overwrite the chang
     not yet confirmed.
   - Values that become unused are not deleted, but forScore hides them.
 - In October 2026 forScore's support confirmed that direct database or sync-file edits are risky
-  and that the CSV import is the supported way. Direct writes are kept only behind the danger
-  zone.
+  and that the CSV import is the supported way. Direct writes are kept only as an opt-in.
 - PDF metadata on import (Title, Author → composers, Subject → genres, Keywords → tags).

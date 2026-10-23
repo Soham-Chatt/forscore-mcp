@@ -47,14 +47,15 @@ def test_preview_then_apply_writes_import(
     assert out.startswith("not imported yet")
 
 
-def test_direct_needs_danger_zone(
+def test_direct_needs_direct_writes(
     safe_library: Library, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     file = tmp_path / "changes.json"
     file.write_text(json.dumps(CHANGES))
     code, _, err = run(capsys, "apply", str(file), "--yes", "--direct")
     assert code == 1
-    assert "Direct writes are disabled" in err
+    assert "Direct writes are off" in err
+    assert "forscore-mcp direct-writes enable i-understand-this-can-damage-my-library" in err
 
 
 @pytest.mark.usefixtures("library")
@@ -84,3 +85,26 @@ def test_doctor_and_backups(capsys: pytest.CaptureFixture[str]) -> None:
 
 def test_conventions(capsys: pytest.CaptureFixture[str]) -> None:
     assert "Workflow" in run(capsys, "conventions")[1]
+
+
+def test_direct_writes_command(
+    safe_library: Library, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert "off" in run(capsys, "direct-writes", "status")[1]
+    code, _, err = run(capsys, "direct-writes", "enable")
+    assert code == 1
+    assert "No confirmation phrase" in err
+    assert "direct-writes enable i-understand-this-can-damage-my-library" in err
+    assert run(capsys, "direct-writes", "enable", "yes please")[2].startswith("error: Wrong phrase")
+    assert "off" in run(capsys, "direct-writes", "status")[1]
+
+    code, out, _ = run(capsys, "direct-writes", "enable", "i-understand-this-can-damage-my-library")
+    assert (code, "ON" in out) == (0, True)
+    file = tmp_path / "changes.json"
+    file.write_text(json.dumps(CHANGES))
+    assert run(capsys, "apply", str(file), "--yes", "--direct")[0] == 0
+    assert safe_library.item("Wet Hands").key == "A minor"
+    assert "ON" in run(capsys, "doctor")[1]
+
+    assert "off" in run(capsys, "direct-writes", "disable")[1]
+    assert run(capsys, "apply", str(file), "--yes", "--direct")[0] == 1
