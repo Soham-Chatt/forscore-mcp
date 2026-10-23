@@ -84,10 +84,11 @@ forScore notices changed sync files through `.syncFolderState`, which lists each
 modification time.
 
 Editing only the database leaves the sync files stale, so other devices never see the change.
-This happened on 2026-10-22: after a direct database edit, the iPad kept the old names for 40
-scores. Bumping `Z_OPT` and `ZMODIFIED` is *not* enough.
+In practice, after database-only edits a synced iPad kept showing the old values for every
+score whose sync file forScore had not rewritten itself. Bumping `Z_OPT` and `ZMODIFIED` is
+*not* enough.
 
-`apply` therefore updates each changed score's sync file in the same step, and bumps
+Direct writes (danger zone) therefore update each changed score's sync file in the same step, and bump
 `Z_OPT`/`ZMODIFIED` so the database stays consistent. `forscore-mcp sync-check` (and the
 `doctor` check) compares the two.
 
