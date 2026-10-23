@@ -160,6 +160,9 @@ match.
 
 ### MCP tools
 
+Every tool's parameters and the full CLI are listed in [`docs/reference.md`](docs/reference.md),
+which is generated from the code.
+
 | Tool | Effect |
 |---|---|
 | `list_scores` (filters, paging), `get_score`, `list_values`, `list_setlists`, `audit_library`, `check_sync`, `convert_key`, `doctor`, `get_conventions` | read only |
