@@ -6,9 +6,10 @@ and for agents *using* the tool through its CLI.
 ## Using the tool (no MCP)
 
 Run `forscore-mcp conventions` and follow it. Read with `forscore-mcp list --json` and
-`forscore-mcp values <kind> --json`; write a changeset file, run `forscore-mcp preview <file>`,
-get the user's approval, ask them to quit forScore on the Mac, then
-`forscore-mcp apply <file> --yes`. Never pass `--yes` without explicit user approval.
+`forscore-mcp values <kind> --json`; write a changeset file, run `forscore-mcp preview <file>`, get the user's approval, then
+`forscore-mcp apply <file> --yes`. It creates an import CSV; the user imports it in forScore
+(Backups › Metadata › Import); then `forscore-mcp verify <import id>`. Never pass `--yes`
+without explicit user approval, and never enable the danger zone yourself.
 
 ## Architecture
 
@@ -22,6 +23,7 @@ get the user's approval, ask them to quit forScore on the Mac, then
 | `schema.py` | discovers and validates the Core Data layout; raises `SchemaError` |
 | `db.py` | connections (read-only by default), in-memory snapshots, transactions |
 | `safety.py` | forScore-running guard, backup / restore (database + sync files) |
+| `csvimport.py` | default write path: forScore Metadata CSV, delivery, verify, undo |
 | `syncfiles.py` | per-score `.itm` sync files: read, update, drift check |
 | `repository.py` | `Store`: read and write primitives on one connection, no policy |
 | `changeset.py` | parse/validate changesets, run them on a `Store`, produce a diff `Report` |
@@ -41,7 +43,9 @@ exposed by both the CLI and the MCP server.
 - Tests use the synthetic library in `tests/conftest.py`, built from the real schema DDL in
   `tests/fixtures/schema.sql`. Never commit a real library, backups or personal changesets
   (`local/` is gitignored for those).
-- Every write path goes through `Library`, which must keep: refusing to write while forScore runs
+- The default write path is the CSV import (`Library.apply`, method "csv"). Direct writes
+  (method "direct") must stay behind `safety.require_danger_zone()`.
+- Every direct write path goes through `Library`, which must keep: refusing to write while forScore runs
   (`safety.require_quit`), a backup before writing, one transaction, integrity checks,
   `Store.touch` on changed items, and updating their sync files (`syncfiles.update`). Other
   devices only see what is in the sync files.

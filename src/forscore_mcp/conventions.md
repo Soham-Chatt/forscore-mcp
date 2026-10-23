@@ -30,10 +30,14 @@ is already consistent.
 3. Write the approved changes as one changeset. Use `renames` for values used by many scores.
    PDF file names cannot be changed by the tool; tell the user to rename them in forScore
    (changing a title there can rename the file).
-4. `preview_changeset` and show the user the summary.
-5. Ask the user to **quit forScore on the Mac** (the iPad can stay open), then
-   `apply_changeset` with `confirm=true`. A backup is made automatically.
-6. Check that `sync_files_updated` in the report matches the number of scores changed. Ask the
-   user to open forScore on the Mac, wait a minute, and check the iPad. `check_sync` should
-   return nothing. If anything is wrong, `restore_backup` with the backup id from the apply
-   report.
+4. `preview_changeset` and show the user the summary, including anything listed under
+   `skipped` (changes the CSV import cannot make).
+5. `apply_changeset` with `confirm=true`. This creates an import CSV and sends it to forScore;
+   nothing changes yet. Tell the user the `next_step`: in forScore, open Backups › Metadata
+   (CSV) › Import, tap the file, check forScore's preview and tap Save.
+6. When the user says they saved, call `verify_import` and report the result. If something is
+   wrong, `undo_import` creates a CSV that restores the previous values.
+7. Skipped changes (library membership, composer sort names): ask the user to make them in
+   forScore. Only if the user has enabled the danger zone themselves, and agrees, use
+   `apply_changeset(method="direct")`. It needs forScore quit on the Mac, and it is not
+   supported by forScore.
