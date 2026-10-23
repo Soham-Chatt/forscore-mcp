@@ -29,9 +29,13 @@ def test_read_tools() -> None:
 def test_apply_requires_confirm() -> None:
     changes = {"scores": [{"match": "Wet Hands", "set": {"key": "A minor"}}]}
     assert call("apply_changeset", changeset=changes)["dry_run"] is True
-    assert call("get_score", match="Wet Hands")["key"] == "A major"
-    assert call("apply_changeset", changeset=changes, confirm=True)["dry_run"] is False
+    report = call("apply_changeset", changeset=changes, confirm=True)
+    assert report["method"] == "csv"
+    assert call("verify_import", import_id=report["import_id"])["status"] == "not imported yet"
+    direct = call("apply_changeset", changeset=changes, confirm=True, method="direct")
+    assert direct["dry_run"] is False  # this module's fixture enables the danger zone
     assert call("get_score", match="Wet Hands")["key"] == "A minor"
+    assert call("verify_import", import_id=report["import_id"])["status"] == "imported"
 
 
 def test_library_errors_become_tool_errors() -> None:

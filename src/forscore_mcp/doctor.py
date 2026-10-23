@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from .errors import ForScoreError
 from .library import Library
 from .models import ItemKind
-from .safety import forscore_running
+from .safety import danger_zone_enabled, forscore_running
 
 
 @dataclass(frozen=True)
@@ -58,16 +58,25 @@ def run_checks(library: Library | None = None) -> list[Check]:
         )
     except (ForScoreError, OSError) as exc:
         checks.append(Check("sync files", False, f"Cannot read sync files: {exc}"))
-    running = forscore_running()
+    danger = danger_zone_enabled()
     checks.append(
         Check(
-            "forScore closed",
-            not running,
-            "Running: reading works, but quit it (Cmd-Q) before applying changes."
-            if running
-            else "OK, changes can be applied.",
+            "write mode",
+            True,
+            "DANGER ZONE: direct database writes are allowed (unsupported by forScore)."
+            if danger
+            else "CSV import via forScore (supported); direct writes are off.",
         )
     )
+    if danger:
+        running = forscore_running()
+        checks.append(
+            Check(
+                "forScore closed",
+                not running,
+                "Running: quit it (Cmd-Q) before any direct write." if running else "OK",
+            )
+        )
     backup_parent = library.backup_dir
     while not backup_parent.exists() and backup_parent != backup_parent.parent:
         backup_parent = backup_parent.parent
