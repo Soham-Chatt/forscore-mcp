@@ -5,7 +5,12 @@ it on Save, handling the database and sync itself. Behaviour verified against fo
 
 - rows match existing scores by ``Filename``; unknown files are ignored (nothing is created)
 - only differing cells are applied; an empty cell clears the field; lists replace (", ")
-- bookmark rows carry ``Start/End Page (Bookmark)``; unmatched ones are ignored
+- bookmark rows follow their score's row and are meant as its complete bookmark list (left-out
+  bookmarks are deleted). But the import does not match existing bookmarks reliably: even
+  re-importing forScore's own unchanged export can show bookmarks as "Added" or as "Updated"
+  without changes, and saving such a preview has deleted a bookmark. A score row without
+  bookmark rows deletes all its bookmarks. So scores that have bookmarks, and bookmarks
+  themselves, are never written to a CSV.
 - keys are a MIDI-style signature (``keysf``, ``keymi``), not forScore's internal code
 
 Each generated import is kept with the before- and after-state of its items, so it can be
@@ -19,7 +24,7 @@ import json
 import shutil
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -80,17 +85,25 @@ class Mismatch:
         return asdict(self)
 
 
-def unsupported(before: Item, after: Item) -> list[str]:
-    """Changes a CSV row cannot express, as readable reasons."""
+BOOKMARK_REASON = "a score with bookmarks (forScore's CSV import can lose or duplicate them)"
+
+
+def importable(before: Item, after: Item, *, has_bookmarks: bool) -> tuple[Item | None, list[str]]:
+    """What of a change a CSV row can carry: the item to write (None: nothing) and why not all.
+
+    Unsupported parts are reverted to their old value, so the rest of the change still imports.
+    """
+    if after.kind is ItemKind.BOOKMARK or has_bookmarks:
+        return None, [BOOKMARK_REASON]
+    if any("," in value for name in _LISTS.values() for value in after.get(name)):
+        return None, ["values containing a comma (the CSV import would split them)"]
     reasons = []
     if before.libraries != after.libraries:
         reasons.append("library membership (change it in forScore)")
     if after.key and after.key != before.key and keys.to_signature(after.key) is None:
         reasons.append(f"key {after.key} (too many sharps or flats for the CSV format)")
-    for name in ("composers", "genres", "tags", "labels"):
-        if any("," in value for value in after.get(name)):
-            reasons.append(f"{name} containing a comma")
-    return reasons
+        after = replace(after, key=before.key)
+    return after, reasons
 
 
 def row(item: Item) -> dict[str, str]:

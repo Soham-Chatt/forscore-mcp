@@ -117,8 +117,14 @@ forScore must not be running during writes; otherwise it may overwrite the chang
     database and the sync files itself.
   - Rows match scores by `Filename`; unknown files are ignored.
   - An empty cell clears the field, and lists are replaced, not merged.
-  - Bookmark rows that match no bookmark are ignored. Whether existing bookmarks update is
-    not yet confirmed.
+  - Bookmark rows must follow their score's row. Bookmark rows alone give "No usable data
+    found". The rows under a score are meant as its complete bookmark list: they match by
+    title, unknown titles are added, and missing bookmarks are removed.
+  - A score row without bookmark rows removes all of that score's bookmarks.
+  - Bookmark matching is unreliable (forScore 15.2): re-importing forScore's own unchanged
+    export can list bookmarks as "Added", or as "Updated" with no fields. Saving such a
+    preview deleted a bookmark in testing. The tool therefore never writes scores that have
+    bookmarks, or bookmarks, to a CSV.
   - Values that become unused are not deleted, but forScore hides them.
 - In October 2026 forScore's support confirmed that direct database or sync-file edits are risky
   and that the CSV import is the supported way. Direct writes are kept only as an opt-in.

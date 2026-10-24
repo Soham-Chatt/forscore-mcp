@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import sqlite3
 from collections.abc import Generator
 from contextlib import closing, contextmanager
@@ -133,16 +132,14 @@ class Library:
         report.pruned = {}  # the CSV import cannot delete values; forScore hides unused ones
         skipped: dict[str, list[str]] = {}
         before, expected = [], []
-        for old, new in zip(report.previous, report.updated, strict=True):
-            reasons = csvimport.unsupported(old, new)
-            if any("comma" in reason for reason in reasons):
-                skipped[new.name] = reasons
-                continue
+        with_bookmarks = {i.path for i in self.items() if i.kind is ItemKind.BOOKMARK}
+        for old, change in zip(report.previous, report.updated, strict=True):
+            new, reasons = csvimport.importable(
+                old, change, has_bookmarks=change.path in with_bookmarks
+            )
             if reasons:
-                skipped[new.name] = reasons
-                if "key" in " ".join(reasons):
-                    new = dataclasses.replace(new, key=old.key)
-            if any(old.get(name) != new.get(name) for name in csvimport.CSV_FIELDS):
+                skipped[change.name] = reasons
+            if new and any(old.get(name) != new.get(name) for name in csvimport.CSV_FIELDS):
                 before.append(old)
                 expected.append(new)
         if report.sort_names:

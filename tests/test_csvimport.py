@@ -51,15 +51,23 @@ def test_apply_writes_csv_and_leaves_library_alone(
     assert report["pruned"] == {}  # CSV cannot delete values
 
 
-def test_bookmark_row(safe_library: Library) -> None:
-    report = safe_library.apply(
-        {"items": [{"match": "Kinderszenen › Träumerei", "set": {"reference": "Op. 15 No. 7"}}]}
-    ).to_dict()
-    (row,) = rows(report["csv_file"])
-    assert row["Filename"] == "Kinderszenen.pdf"
-    assert (row["Title"], row["Start Page (Bookmark)"], row["End Page (Bookmark)"]) == (
-        "Träumerei", "7", "7",
-    )  # fmt: skip
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"match": "Kinderszenen › Träumerei", "set": {"reference": "Op. 15 No. 7"}},
+        {"match": "Kinderszenen", "set": {"reference": "Op. 15 (rev.)"}},
+    ],
+)
+def test_scores_with_bookmarks_stay_out_of_csv(
+    safe_library: Library, delivered: list[Path], change: dict[str, Any]
+) -> None:
+    """forScore's import can delete or duplicate bookmarks, and a score row without its
+    bookmark rows deletes them all; so neither is ever written."""
+    report = safe_library.apply({"items": [change]}).to_dict()
+    (reason,) = next(iter(report["skipped"].values()))
+    assert reason == csvimport.BOOKMARK_REASON
+    assert report["next_step"] == "Nothing to import."
+    assert not delivered
 
 
 def test_cleared_values_are_empty_cells(safe_library: Library) -> None:
@@ -75,14 +83,14 @@ def test_unsupported_changes_are_skipped(safe_library: Library) -> None:
         {
             "sort_names": {"Robert Schumann": "Schumann, Robert"},
             "items": [
-                {"match": "Kinderszenen", "add": {"libraries": ["Personal"]}},
+                {"match": "Waltz in B Minor", "add": {"libraries": ["Personal"]}},
                 {"match": "Wet Hands", "set": {"tags": ["Rock, Pop"]}},
                 {"match": "Fur Elise", "set": {"key": "D♯ major", "reference": "WoO 59"}},
             ],
         }
     ).to_dict()
     skipped = report["skipped"]
-    assert "library membership" in skipped["Kinderszenen"][0]
+    assert "library membership" in skipped["Waltz in B Minor"][0]
     assert "comma" in skipped["Wet Hands"][0]
     assert "D♯ major" in skipped["Fur Elise"][0]
     assert "composer sort names" in skipped
@@ -92,7 +100,7 @@ def test_unsupported_changes_are_skipped(safe_library: Library) -> None:
 
 def test_nothing_to_import(safe_library: Library, delivered: list[Path]) -> None:
     report = safe_library.apply(
-        {"items": [{"match": "Kinderszenen", "add": {"libraries": ["Personal"]}}]}
+        {"items": [{"match": "Waltz in B Minor", "add": {"libraries": ["Personal"]}}]}
     )
     assert report.to_dict()["next_step"] == "Nothing to import."
     assert not delivered
