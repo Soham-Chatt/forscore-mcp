@@ -1,7 +1,7 @@
 {
   "name": "forscore",
   "displayName": "forScore",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Read and clean up forScore sheet-music library metadata (composers, references, keys, genres, tags).",
   "author": {
     "name": "Soham-Chatt",
