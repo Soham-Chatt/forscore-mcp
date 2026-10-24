@@ -149,6 +149,8 @@ See [`examples/changeset.example.json`](examples/changeset.example.json):
 
 forScore's CSV format has no columns for these, so the tool lists them under "not in CSV"
 instead of importing them:
+- scores that have bookmarks, and bookmarks themselves: forScore's CSV import does not match
+  existing bookmarks reliably and can delete or duplicate them
 - library membership
 - composer sort names (`sort_names`)
 - keys with more than 7 sharps or flats
@@ -184,7 +186,8 @@ Environment variables:
 > it. It bypasses forScore's own validation and edits the database and the per-score sync files
 > directly.
 
-For the few changes the CSV import cannot make (library membership, composer sort names), the
+For the changes the CSV import cannot make (scores with bookmarks, library membership,
+composer sort names), the
 tool can write the database directly. This is off by default. Turn it on with a confirmation
 phrase:
 
@@ -216,8 +219,6 @@ No MCP tool can turn direct writes on.
 - Early (0.x), tested with forScore 15.2. A forScore update that changes the database layout
   makes the tool refuse to run until it is updated.
 - Setlists are read-only.
-- It's not yet confirmed whether the CSV import can update existing bookmarks' metadata;
-  `verify` will show it either way.
 
 ## Contributing
 

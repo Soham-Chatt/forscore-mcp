@@ -37,7 +37,7 @@ is already consistent.
    (CSV) › Import, tap the file, check forScore's preview and tap Save.
 6. When the user says they saved, call `verify_import` and report the result. If something is
    wrong, `undo_import` creates a CSV that restores the previous values.
-7. Skipped changes (library membership, composer sort names): ask the user to make them in
-   forScore. Only if the user has turned on direct writes themselves, and agrees, use
+7. Skipped changes (scores with bookmarks, library membership, composer sort names): ask the
+   user to make them in forScore. Only if the user has turned on direct writes themselves, and agrees, use
    `apply_changeset(method="direct")`. It needs forScore quit on the Mac, and it is not
    supported by forScore.
