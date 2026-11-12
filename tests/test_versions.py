@@ -1,4 +1,5 @@
-"""The version must match across the package, the plugin manifest and the plugin's MCP pin."""
+"""The version must match across the package, the plugin manifest, the plugin's MCP pin and
+the MCP registry metadata."""
 
 import json
 import tomllib
@@ -17,4 +18,8 @@ def test_versions_in_sync() -> None:
     # The docs say to set the version in plugin.json only, never also in the marketplace entry.
     assert "version" not in load(".claude-plugin/marketplace.json")["plugins"][0]
     args = load("plugin/.mcp.json")["mcpServers"]["forscore"]["args"]
-    assert any(arg.endswith(f"@v{version}") for arg in args)
+    assert f"forscore-mcp@{version}" in args
+    server = load("server.json")
+    assert server["version"] == server["packages"][0]["version"] == version
+    readme = (ROOT / "README.md").read_text()
+    assert f"<!-- mcp-name: {server['name']} -->" in readme  # registry ownership check

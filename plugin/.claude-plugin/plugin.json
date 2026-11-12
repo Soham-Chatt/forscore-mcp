@@ -1,7 +1,7 @@
 {
   "name": "forscore",
   "displayName": "forScore",
-  "version": "0.5.1",
+  "version": "1.0.0",
   "description": "Read and clean up forScore sheet-music library metadata (composers, references, keys, genres, tags).",
   "author": {
     "name": "Soham-Chatt",
@@ -14,5 +14,6 @@
     "sheet-music",
     "metadata",
     "mcp"
-  ]
+  ],
+  "license": "PolyForm-Noncommercial-1.0.0"
 }

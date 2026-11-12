@@ -1,5 +1,7 @@
 # forscore-mcp
 
+<!-- mcp-name: io.github.Soham-Chatt/forscore-mcp -->
+
 Clean up the metadata in a [forScore](https://forscore.co) sheet-music library in bulk:
 titles, composers, catalogue references (Op., BWV, K., …), keys, genres, tags, ratings and more.
 It works through an AI assistant (an MCP server and a Claude Code plugin; Claude and other
@@ -78,18 +80,20 @@ Add the server to the client's MCP configuration. For Claude Desktop that is
   "mcpServers": {
     "forscore": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/Soham-Chatt/forscore-mcp", "forscore-mcp"]
+      "args": ["forscore-mcp"]
     }
   }
 }
 ```
 
-Agents without MCP support can use the CLI with `--json`; see [`AGENTS.md`](AGENTS.md).
+It is also listed in the [official MCP registry](https://registry.modelcontextprotocol.io) as
+`io.github.Soham-Chatt/forscore-mcp`. Agents without MCP support can use the CLI with `--json`;
+see [`AGENTS.md`](AGENTS.md).
 
 ### Command line
 
 ```
-uv tool install git+https://github.com/Soham-Chatt/forscore-mcp
+uv tool install forscore-mcp
 forscore-mcp doctor
 ```
 
@@ -239,4 +243,6 @@ covers releases.
 
 ## License
 
-To be decided; until then, all rights reserved.
+[PolyForm Noncommercial 1.0.0](LICENSE): free for personal and other non-commercial use,
+including changing and sharing it. Commercial use requires a separate license; open an issue or
+contact the author to ask.
