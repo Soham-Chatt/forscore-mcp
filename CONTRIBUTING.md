@@ -21,6 +21,9 @@ uv run ruff format . && uv run ruff check . && uv run ty check && uv run pytest
 ```
 
 - Work on a branch and open a pull request against `main`. CI must pass.
+- The project is licensed under PolyForm Noncommercial 1.0.0. By submitting a contribution,
+  you agree that it is provided under that license and that the author may also license it
+  to others under separate (including commercial) terms.
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, …).
 - After changing an MCP tool or CLI command, regenerate the reference:
   `uv run python scripts/gen_reference.py`.
