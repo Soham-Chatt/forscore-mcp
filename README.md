@@ -223,7 +223,7 @@ No MCP tool can turn direct writes on.
 ## Contributing
 
 Issues and pull requests are welcome, including reports from other forScore versions and
-setups.
+setups. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 Development:
 
