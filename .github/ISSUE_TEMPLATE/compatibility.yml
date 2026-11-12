@@ -1,0 +1,25 @@
+name: Library compatibility report
+description: The tool refuses or misreads a library (other forScore version or setup)
+labels: [compatibility]
+body:
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `forscore-mcp doctor`
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: forScore and macOS versions
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: Devices you sync with, roughly how many scores and bookmarks, anything unusual.
+  - type: markdown
+    attributes:
+      value: Please do not attach your library database or backups.
