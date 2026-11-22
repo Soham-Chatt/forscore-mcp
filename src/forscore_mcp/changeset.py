@@ -21,6 +21,7 @@ may already use the new names.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -50,7 +51,10 @@ class Changeset:
 
 @dataclass
 class Report:
-    """Outcome of running a changeset. ``changes`` maps item name -> field -> [before, after]."""
+    """Outcome of running a changeset. ``changes`` maps item name -> field -> [before, after].
+
+    Changed items that share a name are keyed ``"name (uuid)"`` so none is hidden.
+    """
 
     dry_run: bool
     changes: dict[str, dict[str, list[Any]]] = field(default_factory=dict)
@@ -143,8 +147,11 @@ def run(store: Store, changeset: Changeset, *, dry_run: bool) -> Report:
 
     after = dict(zip(touched, store.items(touched), strict=True))
     changed = [pk for pk in store.item_pks() if pk in touched and after[pk] != before[pk]]
+    names = Counter(after[pk].name for pk in changed)
     for pk in changed:
-        report.changes[after[pk].name] = _diff(before[pk], after[pk])
+        item = after[pk]
+        key = item.name if names[item.name] == 1 else f"{item.name} ({item.uuid})"
+        report.changes[key] = _diff(before[pk], item)
     store.touch(changed)
     report.updated = [after[pk] for pk in changed]
     report.previous = [before[pk] for pk in changed]

@@ -165,3 +165,16 @@ def test_unknown_schema(tmp_path: Path) -> None:
         conn.execute("CREATE TABLE t (x)")
     with pytest.raises(SchemaError):
         Library(path).items()
+
+
+def test_report_keeps_items_that_share_a_name(library: Library) -> None:
+    report = library.preview(
+        {
+            "items": [
+                {"match": "UUID-ELISE", "set": {"title": "Same"}},
+                {"match": "UUID-WET", "set": {"title": "Same"}},
+            ]
+        }
+    )
+    assert set(report.changes) == {"Same (UUID-ELISE)", "Same (UUID-WET)"}
+    assert report.to_dict()["items_changed"] == 2
