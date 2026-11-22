@@ -3,7 +3,7 @@
     "forscore": {
       "command": "uvx",
       "args": [
-        "forscore-mcp@1.0.0"
+        "forscore-mcp@1.0.1"
       ]
     }
   }
